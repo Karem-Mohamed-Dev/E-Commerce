@@ -6,6 +6,11 @@ exports.getCoupons = async (req, res, next) => {
     res.send('Get Coupons');
 }
 
+// Get Coupon
+exports.getCoupon = async (req, res, next) => {
+    res.send('Get Coupon');
+}
+
 // Create Coupon
 exports.createCoupon = async (req, res, next) => {
     res.send('Create Coupon');

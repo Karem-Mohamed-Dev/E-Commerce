@@ -1,6 +1,6 @@
 const router = require('express').Router();
 
-const { getCoupons, createCoupon, editCoupon, deleteCoupon } = require('../controllers/Coupon.controller.js');
+const { getCoupons, getCoupon, createCoupon, editCoupon, deleteCoupon } = require('../controllers/Coupon.controller.js');
 
 // Edit Coupon
 router.put('/:couponId', editCoupon);
@@ -10,6 +10,9 @@ router.delete('/:couponId', deleteCoupon);
 
 // Create Coupon
 router.post('/', createCoupon);
+
+// Get Coupon
+router.get('/:code', getCoupon);
 
 // Get All Coupons
 router.get('/', getCoupons);

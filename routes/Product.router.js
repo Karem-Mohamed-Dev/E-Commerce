@@ -15,7 +15,7 @@ router.post('/:productId/review', reviewProduct);
 router.get('/:productId/reviews', productReviews);
 
 // Report Product
-router.post('/report', reportProduct);
+router.post('/:productId/report', reportProduct);
 
 // Edit Product
 router.put('/:productId', editProduct);
