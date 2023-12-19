@@ -21,6 +21,7 @@ const productRouter = require("./routes/Product.router");
 const couponRouter = require("./routes/Coupon.router");
 const categoryRouter = require("./routes/Category.router");
 const subCategoryRouter = require("./routes/SubCategory.router");
+const brandRouter = require("./routes/Brand.router");
 
 // Routes
 app.use('/api/v1/auth', authRouter);
@@ -29,6 +30,7 @@ app.use('/api/v1/product', productRouter);
 app.use('/api/v1/coupon', couponRouter);
 app.use('/api/v1/category', categoryRouter);
 app.use('/api/v1/subCategory', subCategoryRouter);
+app.use('/api/v1/brand', brandRouter);
 
 // Not Found
 app.use((req, res, next) => res.status(404).json({ msg: "Route not found" }));
