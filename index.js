@@ -17,10 +17,12 @@ app.use(helmet());
 // Routers Import
 const authRouter = require("./routes/Auth.router");
 const adminRouter = require("./routes/Admin.router");
+const productRouter = require("./routes/Product.router");
 
 // Routes
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/product', productRouter);
 
 // Not Found
 app.use((req, res, next) => res.status(404).json({ msg: "Route not found" }));
