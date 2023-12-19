@@ -18,11 +18,13 @@ app.use(helmet());
 const authRouter = require("./routes/Auth.router");
 const adminRouter = require("./routes/Admin.router");
 const productRouter = require("./routes/Product.router");
+const couponRouter = require("./routes/Coupon.router");
 
 // Routes
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/product', productRouter);
+app.use('/api/v1/coupon', couponRouter);
 
 // Not Found
 app.use((req, res, next) => res.status(404).json({ msg: "Route not found" }));
