@@ -1,6 +1,6 @@
 const { Schema, model } = require("mongoose");
 
-const UserSchema = new Schema({
+const SellerSchema = new Schema({
     name: { type: String, required: [true, "User Name Is Required"], trim: true },
     email: { type: String, required: [true, "Email Is Required"], trim: true },
     password: { type: String, required: [true, "Paasword Is Required"], trim: true },
@@ -12,10 +12,10 @@ const UserSchema = new Schema({
     },
     role: { type: String, default: 'user' },
     ban: { type: Boolean, default: false },
-    favorites: [{ type: Schema.Types.ObjectId, ref: "Product" }],
-    cart: { type: Schema.Types.ObjectId, ref: "Cart", default: null },
-    orders: [{ type: Schema.Types.ObjectId, ref: "Order" }],
+    warnings: [{ type: String, required: [true, "Warning Content Is Required"], trim: true}],
+    balance: { type: Number, default: 0 },
+    products: [{ type: Schema.Types.ObjectId, ref: "Product" }],
     resetPass: { code: { type: String, default: null }, expiresAt: { type: Date, default: null } }
 }, { timestamps: true })
 
-module.exports = model('User', UserSchema);
+module.exports = model('Seller', SellerSchema);
