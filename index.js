@@ -23,7 +23,7 @@ const categoryRouter = require("./routes/Category.router");
 const subCategoryRouter = require("./routes/SubCategory.router");
 const brandRouter = require("./routes/Brand.router");
 const cartRouter = require("./routes/Cart.router");
-const orderRouter = require("./routes/Order.router"); 
+const orderRouter = require("./routes/Order.router");
 const userRouter = require("./routes/User.router");
 const sellerRouter = require("./routes/Seller.router");
 
@@ -44,7 +44,10 @@ app.use('/api/v1/seller', sellerRouter);
 app.use((req, res, next) => res.status(404).json({ msg: "Route not found" }));
 
 // Error
-app.use((error, req, res, next) => res.status(error.statusCode || 500).json({ msg: error.msg || "Something went wrong" }));
+app.use((error, req, res, next) => {
+    res.status(error.statusCode || 500).json({ msg: error.message || "Something went wrong" })
+    console.log(error.message)
+});
 
 const start = async () => {
     // await mongoose.connect(process.env.MONGO_URI);
