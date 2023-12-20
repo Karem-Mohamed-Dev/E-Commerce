@@ -1,4 +1,5 @@
 const Admin = require("../models/Admin");
+const User = require("../models/User");
 
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
@@ -59,14 +60,32 @@ exports.deleteAdmin = async (req, res, next) => {
     } catch (err) { next(err) }
 }
 
-// User Search
+// Search For User 
 exports.userSearch = async (req, res, next) => {
-    res.send('User Search');
+    const { name } = req.query;
+    const page = +req.query.page || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    try {
+        const usersCount = await User.countDocuments({ name: { $regex: name } });
+        const users = await User.find({ name: { $regex: name } }, ["_id", "name", "image"])
+            .skip(skip).limit(limit);
+
+        response.status(200).json({
+            result: usersCount,
+            pagenationData: {
+                currentPage: page,
+                totalPages: (usersCount / 10).toFixed(0)
+            },
+            users
+        })
+    } catch (error) { next(error) }
 }
 
 // Get Warned Users
 exports.warned = async (req, res, next) => {
-    res.send('Warned Users');
+res.send('Warned Users');
 }
 
 // Warn User
