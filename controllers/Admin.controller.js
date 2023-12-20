@@ -14,7 +14,7 @@ exports.adminLogin = async (req, res, next) => {
     if (!isStrongPassword(password)) return next(errorModel(400, 'Please enter a strong password'));
 
     try {
-        const admin = await Admin.find({ email });
+        const admin = await Admin.findOne({ email });
         if (!admin) return next(errorModel(400, 'No admin found'));
 
         const validPass = await bcrypt.compare(password, admin.password);

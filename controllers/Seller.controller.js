@@ -18,7 +18,7 @@ exports.login = async (req, res, next) => {
     if (!isStrongPassword(password)) return next(errorModel(400, 'Please enter a strong password'));
 
     try {
-        const seller = await Seller.find({ email });
+        const seller = await Seller.findOne({ email });
         if (!seller) return next(errorModel(400, 'No user found'));
 
         const validPass = await bcrypt.compare(password, seller.password);
@@ -35,11 +35,14 @@ exports.register = async (req, res, next) => {
     const { name, email, password } = req.body;
     if (!name || !email || !password) return next(errorModel(400, 'All fields are reqired'));
 
-    if (name.length < 2 || name.length > 20) return next(errorModel(400, "name cant't be less than 2 or bigger than 20 characters"));
+    if (name.length < 2 || name.length > 20) return next(errorModel(400, "name can't be less than 2 or bigger than 20 characters"));
     if (!isEmail(email)) return next(errorModel(400, "Please enter a valid email"))
     if (!isStrongPassword(password)) return next(errorModel(400, "Please enter a strong password"));
 
     try {
+        const exists = await Seller.findOne({ email });
+        if (!exists) return next(errorModel(400, "Admin already exists"));
+
         const hash = await bcrypt.hash(password, 10);
         const seller = await Seller.create({ name, email, password: hash });
         const { password: pass, updatedAt, __v, products, resetPass, ...other } = seller._doc;
