@@ -13,7 +13,7 @@ const SellerSchema = new Schema({
         city: { type: String, default: null, trim: true },
         postCode: { type: Number, default: null },
     },
-    role: { type: String, default: 'user' },
+    role: { type: String, default: 'seller' },
     ban: { type: Boolean, default: false },
     warnings: [{ type: String, required: [true, "Warning Content Is Required"], trim: true}],
     balance: { type: Number, default: 0 },
