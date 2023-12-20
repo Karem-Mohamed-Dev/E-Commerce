@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const isSeller = require('../utils/isSeller.js');
 
 const { login, register, changePassword, updateUser, deleteUser, getUserProducts, getUser } = require('../controllers/Seller.controller.js');
 
@@ -9,13 +10,13 @@ router.post('/login', login);
 router.post('/register', register);
 
 // Change Password
-router.post('/change-pass', changePassword);
+router.post('/change-pass', isSeller, changePassword);
 
 // Update User
-router.put('/:userId', updateUser);
+router.put('/', isSeller, updateUser);
 
 // Delete User
-router.delete('/:userId', deleteUser);
+router.delete('/', isSeller, deleteUser);
 
 // Get Products
 router.get('/:userId/products', getUserProducts);
