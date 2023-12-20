@@ -7,6 +7,7 @@ const Cart = require("../models/Cart");
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
 const { isEmail, isStrongPassword } = require("validator");
+const errorModel = require("../utils/errorModel");
 
 // Login
 exports.login = async (req, res, next) => {
@@ -68,7 +69,7 @@ exports.changePassword = async (req, res, next) => {
 }
 
 // Update Seller
-exports.updateUser = async (req, res, next) => {
+exports.updateSeller = async (req, res, next) => {
     const user = req.user;
     const { name, email, phone, country, city, postCode } = req.body;
     const files = req.files;
@@ -98,7 +99,7 @@ exports.updateUser = async (req, res, next) => {
 }
 
 // Delete Seller
-exports.deleteUser = async (req, res, next) => {
+exports.deleteSeller = async (req, res, next) => {
     const user = req.user;
 
     try {
@@ -116,11 +117,31 @@ exports.deleteUser = async (req, res, next) => {
 }
 
 // Get Seller Products
-exports.getUserProducts = async (req, res, next) => {
-    res.send('Get Seller Products')
+exports.getSellerProducts = async (req, res, next) => {
+    const { sellerId } = req.params;
+    const page = +req.query.page || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    try {
+        const seller = await Seller.findById(sellerId)
+        .select('products').slice(skip, limit).populate('products');
+        if (!seller) return next(errorModel(404, "Seller not found"));
+
+        res.status(200).json(seller.products);
+    } catch (error) { next(error) }
 }
 
 // Get Seller
-exports.getUser = async (req, res, next) => {
-    res.send('Get Seller')
+exports.getSeller = async (req, res, next) => {
+    const { sellerId } = req.params;
+
+    try {
+        const seller = await Seller.findById(sellerId);
+        if (!seller) return next(errorModel(404, "Seller not found"));
+
+        const { password: pass, updatedAt, __v, products, resetPass, ...other } = seller._doc;
+
+        res.status(200).json(other);
+    } catch (error) { next(error) }
 }

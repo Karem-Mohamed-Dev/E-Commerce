@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const isSeller = require('../utils/isSeller.js');
 
-const { login, register, changePassword, updateUser, deleteUser, getUserProducts, getUser } = require('../controllers/Seller.controller.js');
+const { login, register, changePassword, updateSeller, deleteSeller, getSellerProducts, getSeller } = require('../controllers/Seller.controller.js');
 
 // Login
 router.post('/login', login);
@@ -12,16 +12,16 @@ router.post('/register', register);
 // Change Password
 router.post('/change-pass', isSeller, changePassword);
 
-// Update User
-router.put('/', isSeller, updateUser);
+// Update Seller
+router.put('/', isSeller, updateSeller);
 
-// Delete User
-router.delete('/', isSeller, deleteUser);
+// Delete Seller
+router.delete('/', isSeller, deleteSeller);
 
 // Get Products
-router.get('/:userId/products', getUserProducts);
+router.get('/:sellerId/products', getSellerProducts);
 
-// Get User
-router.get('/:userId', getUser);
+// Get Seller
+router.get('/:sellerId', getSeller);
 
 module.exports = router;
