@@ -49,7 +49,14 @@ exports.addAdmin = async (req, res, next) => {
 
 // Delete Admin
 exports.deleteAdmin = async (req, res, next) => {
-    res.send('Delete Admin');
+    const { adminId } = req.params;
+
+    try {
+        const admin = await Admin.findById(adminId);
+        if (!admin) return next(errorModel(404, 'Admin not found'));
+        await admin.deleteOne();
+        res.status(200).json({ msg: "Admin deleted successfully" })
+    } catch (err) { next(err) }
 }
 
 // User Search

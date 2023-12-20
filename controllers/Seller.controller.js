@@ -41,7 +41,7 @@ exports.register = async (req, res, next) => {
 
     try {
         const exists = await Seller.findOne({ email });
-        if (!exists) return next(errorModel(400, "Admin already exists"));
+        if (!exists) return next(errorModel(400, "Seller already exists"));
 
         const hash = await bcrypt.hash(password, 10);
         const seller = await Seller.create({ name, email, password: hash });

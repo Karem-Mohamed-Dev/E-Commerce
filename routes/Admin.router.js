@@ -7,11 +7,6 @@ const { adminLogin, addAdmin, deleteAdmin, userSearch, ban, banned, unBan, warne
 // Login Admin
 router.post("/login", adminLogin);
 
-// Remove Admin
-router.delete("/:adminId", deleteAdmin);
-
-// ----------------------------------------------------------------
-
 // Admin Route Protection
 app.use(isAdmin);
 
@@ -49,5 +44,8 @@ router.get("/reports", reports);
 
 // Add Admin
 router.post("/", addAdmin);
+
+// Remove Admin
+router.delete("/:adminId", deleteAdmin);
 
 module.exports = router;
