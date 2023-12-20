@@ -7,7 +7,7 @@ module.exports = async (req, res, next) => {
     const token = authorization.split(" ")[1];
     try {
         const decoded = jwt.verify(token, process.env.SECRET);
-        req.user = decoded;
+        req.tokenData = decoded;
         next();
     } catch (err) { next(err) }
 }

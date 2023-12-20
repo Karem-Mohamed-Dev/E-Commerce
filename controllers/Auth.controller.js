@@ -1,15 +1,38 @@
 const User = require("../models/User");
+const Seller = require("../models/Seller");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
+const errorModel = require("../utils/errorModel");
 
-// Login
-exports.login = async (req, res, next) => {
-    res.send('login')
-}
 
-// Register
-exports.register = async (req, res, next) => {
-    res.send('register')
+// Vevify Account
+exports.verifyAccount = async (req, res, next) => {
+    const { token } = req.params;
+
+    try {
+        const { email, role } = jwt.verify(token, process.env.SECRET);
+
+        if (role === "user") {
+            const user = await User.findOne({ email });
+            if (!user) return next(errorModel(404, "User not found"));
+
+            user.activated = true;
+            await user.save();
+
+        } else if (role === "seller") {
+            const seller = await Seller.findOne({ email });
+            if (!seller) return next(errorModel(404, "User not found"));
+
+            seller.activated = true;
+            await seller.save();
+        }
+
+        res.send("Verified");
+    } catch (err) {
+        if (err.message === "jwt expired")
+            return res.send("Link expired");
+        next(err)
+    }
+
 }
 
 // Get Reset Password Code

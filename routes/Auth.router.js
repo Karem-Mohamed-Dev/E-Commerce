@@ -1,12 +1,10 @@
 const router = require('express').Router();
 
-const { login, register, getCode, verifyCode, resetPass } = require('../controllers/Auth.controller.js');
+const { verifyAccount, getCode, verifyCode, resetPass } = require('../controllers/Auth.controller.js');
 
-// Login
-router.post('/login', login)
 
-// Register
-router.post('/register', register)
+// Verify Account
+router.get('/verify/:token', verifyAccount);
 
 // Get Reset Password Code
 router.post('/get-code', getCode)

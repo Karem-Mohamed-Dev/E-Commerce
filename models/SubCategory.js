@@ -5,6 +5,7 @@ const SubCategorySchema = new Schema({
     slug: { type: String, required: [true, "Slug Is Required"], trim: true },
     image: { url: { type: String, required: [true, "Url Is Required"], trim: true }, publicId: { type: String, required: [true, "Public Id Is Required"], trim: true } },
     categoryId: { type: Schema.Types.ObjectId, ref: 'Category', required: [true, "Category Id Is Required"] },
+    products: { type: Number, default: 0 },
     creator: { type: Schema.Types.ObjectId, ref: 'Admin', required: [true, "Creator Id Is Required"] }
 }, { timestamps: true })
 

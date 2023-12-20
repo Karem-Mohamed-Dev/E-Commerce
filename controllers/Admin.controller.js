@@ -1,5 +1,6 @@
 const Admin = require("../models/Admin");
 const User = require("../models/User");
+const Seller = require("../models/Seller");
 
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
@@ -12,11 +13,11 @@ exports.adminLogin = async (req, res, next) => {
     if (!email || !password) return next(errorModel(400, 'All fields are reqired'));
 
     if (!isEmail(email)) return next(errorModel(400, 'Please enter a valid email'))
-    if (!isStrongPassword(password)) return next(errorModel(400, 'Please enter a strong password'));
+    if (!isStrongPassword(password)) return next(errorModel(400, "Password must be at least 8 with one character upper case and one character lower case and one symbol"));
 
     try {
         const admin = await Admin.findOne({ email });
-        if (!admin) return next(errorModel(400, 'No admin found'));
+        if (!admin) return next(errorModel(400, 'Email not found'));
 
         const validPass = await bcrypt.compare(password, admin.password);
         if (!validPass) return next(errorModel(400, 'Email or password is invalid'));
@@ -33,12 +34,12 @@ exports.addAdmin = async (req, res, next) => {
     if (!name || !email || !password) return next(errorModel(400, 'All fields are reqired'));
 
     if (name.length < 2 || name.length > 20) return next(errorModel(400, "name can't be less than 2 or bigger than 20 characters"));
-    if (!isEmail(email)) return next(errorModel(400, "Please enter a valid email"))
-    if (!isStrongPassword(password)) return next(errorModel(400, "Please enter a strong password"));
+    if (!isEmail(email)) return next(errorModel(400, 'Please enter a valid email'))
+    if (!isStrongPassword(password)) return next(errorModel(400, "Password must be at least 8 with one character upper case and one character lower case and one symbol"));
 
     try {
         const exists = await Admin.findOne({ email });
-        if (!exists) return next(errorModel(400, "Admin already exists"));
+        if (exists) return next(errorModel(400, "Admin already exists"));
 
         const hash = await bcrypt.hash(password, 10);
         const admin = await Admin.create({ name, email, password: hash });
@@ -60,23 +61,22 @@ exports.deleteAdmin = async (req, res, next) => {
     } catch (err) { next(err) }
 }
 
-// Search For User 
-exports.userSearch = async (req, res, next) => {
-    const { name } = req.query;
+// Search For Seller 
+exports.sellerSearch = async (req, res, next) => {
+    const name = req.query.name || "";
     const page = +req.query.page || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
-
     try {
-        const usersCount = await User.countDocuments({ name: { $regex: name } });
-        const users = await User.find({ name: { $regex: name } }, ["_id", "name", "image"])
+        const sellersCount = await Seller.countDocuments({ name: { $regex: name, $options: "i" } });
+        const users = await Seller.find({ name: { $regex: name, $options: "i" } }, ["_id", "name", "image"])
             .skip(skip).limit(limit);
 
-        response.status(200).json({
-            result: usersCount,
+        res.status(200).json({
+            result: sellersCount,
             pagenationData: {
                 currentPage: page,
-                totalPages: (usersCount / 10).toFixed(0)
+                totalPages: Math.ceil(sellersCount / limit)
             },
             users
         })

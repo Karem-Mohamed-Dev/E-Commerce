@@ -2,7 +2,7 @@ const User = require('../models/User');
 const errorModel = require("./errorModel");
 
 module.exports = async (req, res, next) => {
-    const tokenData = req.user;
+    const tokenData = req.tokenData;
     if (tokenData.role !== 'user') return next(errorModel(401, "Not Authorized"));
 
     try {

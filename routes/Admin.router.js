@@ -1,19 +1,20 @@
 const router = require('express').Router();
 const isAdmin = require("../utils/isAdmin.js");
+const isAuth = require("../utils/isAuth.js");
 
-const { adminLogin, addAdmin, deleteAdmin, userSearch, ban, banned, unBan, warned, warn, unWarn, reports } = require("../controllers/Admin.controller.js");
+const { adminLogin, addAdmin, deleteAdmin, sellerSearch, ban, banned, unBan, warned, warn, unWarn, reports } = require("../controllers/Admin.controller.js");
 
 
 // Login Admin
 router.post("/login", adminLogin);
 
 // Admin Route Protection
-app.use(isAdmin);
+router.use(isAuth, isAdmin);
 
 // ----------------------------------------------------------------
 
-// Search For User
-router.get("/search", userSearch);
+// Search For Seller
+router.get("/search", sellerSearch);
 
 // ----------------------------------------------------------------
 
