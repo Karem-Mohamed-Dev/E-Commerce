@@ -1,13 +1,50 @@
 const Admin = require("../models/Admin");
 
+const bcrypt = require("bcrypt");
+const generateToken = require("../utils/generateToken");
+const { isEmail, isStrongPassword } = require("validator");
+const errorModel = require("../utils/errorModel");
+
 //Admin Login
 exports.adminLogin = async (req, res, next) => {
-    res.send('Admin Login');
+    const { email, password } = req.body;
+    if (!email || !password) return next(errorModel(400, 'All fields are reqired'));
+
+    if (!isEmail(email)) return next(errorModel(400, 'Please enter a valid email'))
+    if (!isStrongPassword(password)) return next(errorModel(400, 'Please enter a strong password'));
+
+    try {
+        const admin = await Admin.find({ email });
+        if (!admin) return next(errorModel(400, 'No admin found'));
+
+        const validPass = await bcrypt.compare(password, admin.password);
+        if (!validPass) return next(errorModel(400, 'Email or password is invalid'));
+        const token = generateToken(admin._id, 'admin');
+
+        const { password: pass, updatedAt, __v, resetPass, ...other } = admin._doc;
+        res.status(200).json({ token, ...other });
+    } catch (error) { next(error) }
 }
 
 // Add Admin
 exports.addAdmin = async (req, res, next) => {
-    res.send('Add Admin');
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) return next(errorModel(400, 'All fields are reqired'));
+
+    if (name.length < 2 || name.length > 20) return next(errorModel(400, "name can't be less than 2 or bigger than 20 characters"));
+    if (!isEmail(email)) return next(errorModel(400, "Please enter a valid email"))
+    if (!isStrongPassword(password)) return next(errorModel(400, "Please enter a strong password"));
+
+    try {
+        const exists = await Admin.findOne({ email });
+        if (!exists) return next(errorModel(400, "Admin already exists"));
+
+        const hash = await bcrypt.hash(password, 10);
+        const admin = await Admin.create({ name, email, password: hash });
+        const { password: pass, updatedAt, __v, resetPass, ...other } = admin._doc;
+        const token = generateToken(admin._id, 'admin');
+        res.status(200).json({ token, ...other });
+    } catch (error) { next(error) }
 }
 
 // Delete Admin

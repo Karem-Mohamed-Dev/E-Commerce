@@ -1,6 +1,21 @@
 const router = require('express').Router();
+const isAdmin = require("../utils/isAdmin.js");
 
 const { adminLogin, addAdmin, deleteAdmin, userSearch, ban, banned, unBan, warned, warn, unWarn, reports } = require("../controllers/Admin.controller.js");
+
+
+// Login Admin
+router.post("/login", adminLogin);
+
+// Remove Admin
+router.delete("/:adminId", deleteAdmin);
+
+// ----------------------------------------------------------------
+
+// Admin Route Protection
+app.use(isAdmin);
+
+// ----------------------------------------------------------------
 
 // Search For User
 router.get("/search", userSearch);
@@ -31,14 +46,6 @@ router.post("/unban/:userId", unBan);
 
 // Get Reports
 router.get("/reports", reports);
-
-// ----------------------------------------------------------------
-
-// Login Admin
-router.post("/login", adminLogin);
-
-// Remove Admin
-router.delete("/:adminId", deleteAdmin);
 
 // Add Admin
 router.post("/", addAdmin);
