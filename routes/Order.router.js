@@ -3,7 +3,7 @@ const router = require('express').Router();
 const { placeOrder, updateOrderStatus, orderDetails, getOrders } = require('../controllers/Order.controller.js');
 
 // Place the order
-router.post('/place', placeOrder);
+router.post('/:cartId', placeOrder);
 
 // Update Order Status
 router.put('/:orderId', updateOrderStatus);

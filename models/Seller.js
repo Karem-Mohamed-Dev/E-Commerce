@@ -4,8 +4,8 @@ const SellerSchema = new Schema({
     name: { type: String, required: [true, "User Name Is Required"], trim: true },
     email: { type: String, required: [true, "Email Is Required"], trim: true },
     password: { type: String, required: [true, "Paasword Is Required"], trim: true },
-    image: { url: { type: String, required: [true, "Url Is Required"], trim: true }, publicId: { type: String, required: [true, "Public Id Is Required"], trim: true } },
-    backgroundImage: { url: { type: String, required: [true, "Url Is Required"], trim: true }, publicId: { type: String, required: [true, "Public Id Is Required"], trim: true } },
+    image: { url: { type: String, default: null }, publicId: { type: String, default: null } },
+    backgroundImage: { url: { type: String, default: null }, publicId: { type: String, default: null } },
     activated: { type: Boolean, default: false },
     phone: { type: Number, default: null },
     address: {
