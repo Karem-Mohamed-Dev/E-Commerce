@@ -25,6 +25,7 @@ const brandRouter = require("./routes/Brand.router");
 const cartRouter = require("./routes/Cart.router");
 const orderRouter = require("./routes/Order.router"); 
 const userRouter = require("./routes/User.router");
+const sellerRouter = require("./routes/Seller.router");
 
 // Routes
 app.use('/api/v1/auth', authRouter);
@@ -37,6 +38,7 @@ app.use('/api/v1/brand', brandRouter);
 app.use('/api/v1/cart', cartRouter);
 app.use('/api/v1/order', orderRouter);
 app.use('/api/v1/user', userRouter);
+app.use('/api/v1/seller', sellerRouter);
 
 // Not Found
 app.use((req, res, next) => res.status(404).json({ msg: "Route not found" }));
