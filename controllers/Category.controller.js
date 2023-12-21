@@ -1,5 +1,4 @@
 const Category = require('../models/Category');
-const Admin = require("../models/Admin");
 const Product = require('../models/Product');
 
 // Get Categorys
@@ -46,8 +45,8 @@ exports.editCategory = async (req, res, next) => {
     const { categoryId } = req.params;
     const { name } = req.body;
     const file = req.file;
-    if (!name || !file) return next(errorModel(400, "Name or Image must be provided"));
-    if (!isMongoId(categoryId)) return next(errorModel(400, "Please Provide a Valid Brand Id"));
+    if (!name && !file) return next(errorModel(400, "Name or Image must be provided"));
+    if (!isMongoId(categoryId)) return next(errorModel(400, "Please Provide a Valid Category Id"));
 
     try {
         const category = await Category.findById(categoryId);
@@ -55,7 +54,7 @@ exports.editCategory = async (req, res, next) => {
         if (file) {
             // Current Image Delete
             // Image Upload
-            const image = { url: "", publicId: "" }; // Simulation until add image upload'
+            const image = { url: "", publicId: "" }; // Simulation until add image upload
             category.image = image;
         }
         if (name) category.name = name;
@@ -68,7 +67,7 @@ exports.editCategory = async (req, res, next) => {
 // Delete Category
 exports.deleteCategory = async (req, res, next) => {
     const { categoryId } = req.params;
-    if (!isMongoId(categoryId)) return next(errorModel(400, "Please Provide a Valid Brand Id"));
+    if (!isMongoId(categoryId)) return next(errorModel(400, "Please Provide a Valid Category Id"));
 
     try {
         const category = await Category.findById(categoryId);
