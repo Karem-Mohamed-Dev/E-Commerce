@@ -99,13 +99,12 @@ exports.warn = async (req, res, next) => {
     const { content } = req.body;
 
     try {
-        const seller = await Seller.find(sellerId);
+        const seller = await Seller.findOne(sellerId);
         if (!seller) return next(errorModel(404, "Seller Not Found"));
 
         seller.warning += 1;
         await seller.save();
-
-        sendEmail(seller.email, Warning, content);
+        sendEmail(seller.email, "Warning", content);
 
         res.status(200).json({ msg: 'Seller Warned successfully' });
     } catch (error) { next(error) }
@@ -116,32 +115,69 @@ exports.unWarn = async (req, res, next) => {
     const { sellerId } = req.params;
 
     try {
-        const seller = await Seller.find(sellerId);
+        const seller = await Seller.findOne(sellerId);
         if (!seller) return next(errorModel(404, "Seller Not Found"));
 
         seller.warning -= 1;
         await seller.save();
-
-        sendEmail(seller.email, Warning, "We Romved One Warning From Your Account");
+        sendEmail(seller.email, "Warning", "We Romved One Warning From Your Account");
 
         res.status(200).json({ msg: 'Seller UnWarned successfully' });
+    } catch (error) { next(error) }
+}
 
+// Get Banned Sellers
+exports.banned = async (req, res, next) => {
+    const page = +req.query.page || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    try {
+        const bannedCount = await Seller.countDocuments({ ban: true });
+        const sellers = await Seller.find({ ban: true })
+        .skip(skip).limit(limit);
+
+        res.status(200).json({ 
+            result: bannedCount,
+            pagenationData: {
+                currentPage: page,
+                totalPages: Math.ceil(result / limit)
+            },
+            banned: sellers
+         });
     } catch (error) { next(error) }
 }
 
 // Ban Sellers
 exports.ban = async (req, res, next) => {
-    res.send('Ban');
-}
+    const { sellerId } = req.params;
 
-// Get Banned Sellers
-exports.banned = async (req, res, next) => {
-    res.send('banned');
+    try {
+        const seller = await Seller.findOne(sellerId);
+        if (!seller) return next(errorModel(404, "Seller Not Found"));
+
+        seller.ban = true;
+        await seller.save();
+        sendEmail(seller.email, "Ban", "You Got Banned for more info please contact support");
+
+        res.status(200).json({ msg: 'Seller Banned successfully' });
+    } catch (error) { next(error) }
 }
 
 // UnBan Sellers
 exports.unBan = async (req, res, next) => {
-    res.send('UnBan');
+    const { sellerId } = req.params;
+
+    try {
+        const seller = await Seller.findOne(sellerId);
+        if (!seller) return next(errorModel(404, "Seller Not Found"));
+
+        seller.ban = false;
+        await seller.save();
+        sendEmail(seller.email, "UnBan", "You Got UnBanned ");
+
+        res.status(200).json({ msg: 'Seller UnBanned successfully' });
+    } catch (error) { next(error) }
 }
 
 // Reports
