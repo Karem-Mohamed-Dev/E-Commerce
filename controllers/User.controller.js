@@ -153,7 +153,6 @@ exports.getUser = async (req, res, next) => {
 // Get Favorites
 exports.getFavorites = async (req, res, next) => {
     const user = req.user;
-    if (!isMongoId(userId)) return next(errorModel(400, "Please Provide a Valid User Id"))
 
     try {
         const favorites = user.favorites;
