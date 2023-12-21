@@ -66,7 +66,25 @@ exports.register = async (req, res, next) => {
 
 // Change Password
 exports.changePassword = async (req, res, next) => {
-    res.send('Change Password')
+    const user = req.user;
+    const { oldPass, newPass } = req.body;
+
+    if (!oldPass || !newPass) return next(errorModel(400, "All fields are reqired"));
+    if (oldPass === newPass) return next(errorModel(400, "New Password must be diffrent"));
+
+    if (!isStrongPassword(oldPass)) return next(errorModel(400, "Old Password must be at least 8 with one character upper case and one character lower case and one symbol"));
+    if (!isStrongPassword(newPass)) return next(errorModel(400, "New Password must be at least 8 with one character upper case and one character lower case and one symbol"));
+
+    try {
+        const validPass = await bcrypt.compare(oldPass, user.password);
+        if (!validPass) return next(errorModel(400, "Password is wrong"));
+
+        const hash = await bcrypt.hash(newPass, 10);
+        user.password = hash;
+        user.save();
+
+        res.status(200).json({ msg: "Password Changed" });
+    } catch (error) { next(error) }
 }
 
 // Update User
@@ -82,4 +100,14 @@ exports.deleteUser = async (req, res, next) => {
 // Get User
 exports.getUser = async (req, res, next) => {
     res.send('Get User')
+}
+
+// Get Favorits
+exports.getFavorits = async (req,res,next) => {
+
+}
+
+// Add Product To Favorits
+exports.addFavorite = async (req,res,next) => {
+
 }
