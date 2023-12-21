@@ -1,6 +1,6 @@
 const Admin = require("../models/Admin");
-const User = require("../models/User");
 const Seller = require("../models/Seller");
+const Report = require("../models/Report");
 
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
@@ -135,16 +135,16 @@ exports.banned = async (req, res, next) => {
     try {
         const bannedCount = await Seller.countDocuments({ ban: true });
         const sellers = await Seller.find({ ban: true })
-        .skip(skip).limit(limit);
+            .skip(skip).limit(limit);
 
-        res.status(200).json({ 
+        res.status(200).json({
             result: bannedCount,
             pagenationData: {
                 currentPage: page,
-                totalPages: Math.ceil(result / limit)
+                totalPages: Math.ceil(bannedCount / limit)
             },
             banned: sellers
-         });
+        });
     } catch (error) { next(error) }
 }
 
@@ -182,5 +182,22 @@ exports.unBan = async (req, res, next) => {
 
 // Reports
 exports.reports = async (req, res, next) => {
-    res.send('Reports');
+    const page = +req.query.page || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    try {
+        const reportesCount = await Report.countDocuments({});
+        const reports = await Report.find({})
+        .skip(skip).limit(limit);
+
+        res.status(200).json({
+            result: reportesCount,
+            pagenationData: {
+                currentPage: page,
+                totalPages: Math.ceil(reportesCount / limit)
+            },
+            reports
+        });
+    } catch (error) { next(error) }
 }
