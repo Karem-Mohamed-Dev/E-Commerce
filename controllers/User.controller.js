@@ -140,7 +140,8 @@ exports.deleteUser = async (req, res, next) => {
 
 // Get User
 exports.getUser = async (req, res, next) => {
-    const { userId } = reqparams;
+    const { userId } = req.params;
+    if (!isMongoId(userId)) return next(errorModel(400, "Please Provide a Valid User Id"))
 
     try {
         const user = User.findById(userId, ["name", "email", "image", "phone", "adress"]);
@@ -149,12 +150,48 @@ exports.getUser = async (req, res, next) => {
     } catch (error) { next(error) }
 }
 
-// Get Favorits
-exports.getFavorits = async (req, res, next) => {
+// Get Favorites
+exports.getFavorites = async (req, res, next) => {
+    const user = req.user;
+    if (!isMongoId(userId)) return next(errorModel(400, "Please Provide a Valid User Id"))
 
+    try {
+        const favorites = user.favorites;
+        res.status(200).json({ result: favorites.length, favorites });
+    } catch (error) { next(error) }
 }
 
-// Add Product To Favorits
+// Add Product To Favorites
 exports.addFavorite = async (req, res, next) => {
+    const user = req.user;
+    const { productId } = req.params;
+    if (!isMongoId(productId)) return next(errorModel(400, "Please Provide a Valid Product Id"))
 
+    try {
+        const product = await Product.findById(productId, "favorited");
+        if (!product) return next(errorModel(400, "Product not found"));
+
+        user.favorites.push(productId);
+        await user.save();
+        await product.updateOne({ favorited: { $inc: 1 } });
+
+        res.status(200).json({ msg: "Successfully added" });
+    } catch (error) { next(error) }
+}
+
+// Remove Product From Favorites
+exports.removeFavorite = async (req, res, next) => {
+    const user = req.user;
+    const { productId } = req.params;
+    if (!isMongoId(productId)) return next(errorModel(400, "Please Provide a Valid Product Id"))
+
+    try {
+        const product = await Product.findById(productId, "favorited");
+
+        user.favorites.pull(productId);
+        await user.save();
+        if (product) await product.updateOne({ favorited: { $inc: -1 } });
+
+        res.status(200).json({ msg: "Successfully removed" });
+    } catch (error) { next(error) }
 }
