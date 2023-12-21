@@ -16,7 +16,7 @@ const SellerSchema = new Schema({
     },
     role: { type: String, default: 'seller' },
     ban: { type: Boolean, default: false },
-    warnings: [{ type: String, required: [true, "Warning Content Is Required"], trim: true}],
+    warnings: {type: Number, default: 0},
     balance: { type: Number, default: 0 },
     products: [{ type: Schema.Types.ObjectId, ref: "Product" }],
     resetPass: { code: { type: String, default: null }, expiresAt: { type: Date, default: null } }

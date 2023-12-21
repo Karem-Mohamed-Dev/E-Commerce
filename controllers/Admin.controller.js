@@ -6,6 +6,7 @@ const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
 const { isEmail, isStrongPassword } = require("validator");
 const errorModel = require("../utils/errorModel");
+const sendEmail = require("../utils/sendEmail");
 
 //Admin Login
 exports.adminLogin = async (req, res, next) => {
@@ -83,32 +84,62 @@ exports.sellerSearch = async (req, res, next) => {
     } catch (error) { next(error) }
 }
 
-// Get Warned Users
+// Get Warned Sellers
 exports.warned = async (req, res, next) => {
-res.send('Warned Users');
+
+    // try {
+    //     const sellers = await Seller.find({ warnings: { $gtr: 0 } })
+
+    // } catch (error) { next(error) }
 }
 
-// Warn User
+// Warn Sellers
 exports.warn = async (req, res, next) => {
-    res.send('Warn');
+    const { sellerId } = req.params;
+    const { content } = req.body;
+
+    try {
+        const seller = await Seller.find(sellerId);
+        if (!seller) return next(errorModel(404, "Seller Not Found"));
+
+        seller.warning += 1;
+        await seller.save();
+
+        sendEmail(seller.email, Warning, content);
+
+        res.status(200).json({ msg: 'Seller Warned successfully' });
+    } catch (error) { next(error) }
 }
 
-// UnWarn User
+// UnWarn Sellers
 exports.unWarn = async (req, res, next) => {
-    res.send('UnWarn');
+    const { sellerId } = req.params;
+
+    try {
+        const seller = await Seller.find(sellerId);
+        if (!seller) return next(errorModel(404, "Seller Not Found"));
+
+        seller.warning -= 1;
+        await seller.save();
+
+        sendEmail(seller.email, Warning, "We Romved One Warning From Your Account");
+
+        res.status(200).json({ msg: 'Seller UnWarned successfully' });
+
+    } catch (error) { next(error) }
 }
 
-// Ban
+// Ban Sellers
 exports.ban = async (req, res, next) => {
     res.send('Ban');
 }
 
-// Get Banned Users
+// Get Banned Sellers
 exports.banned = async (req, res, next) => {
     res.send('banned');
 }
 
-// UnBan
+// UnBan Sellers
 exports.unBan = async (req, res, next) => {
     res.send('UnBan');
 }

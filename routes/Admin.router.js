@@ -18,25 +18,25 @@ router.get("/search", sellerSearch);
 
 // ----------------------------------------------------------------
 
-// Get Warned Users
+// Get Warned Sellers
 router.get("/warned", warned);
 
-// Warn User
-router.post("/warn/:userId", warn);
+// Warn Seller
+router.post("/warn/:sellerId", warn);
 
-// Remove Warn From User
-router.post("/unwarn/:userId", unWarn);
+// Remove Warn From Seller
+router.post("/unwarn/:sellerId", unWarn);
 
 // ----------------------------------------------------------------
 
-// Get Banned Users
+// Get Banned Sellers
 router.get("/banned", banned);
 
-// Ban User
-router.post("/ban/:userId", ban);
+// Ban Seller
+router.post("/ban/:sellerId", ban);
 
-// UnBan User
-router.post("/unban/:userId", unBan);
+// UnBan Seller
+router.post("/unban/:sellerId", unBan);
 
 // ----------------------------------------------------------------
 
