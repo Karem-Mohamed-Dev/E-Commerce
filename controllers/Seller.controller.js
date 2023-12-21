@@ -21,7 +21,7 @@ exports.login = async (req, res, next) => {
 
     try {
         const seller = await Seller.findOne({ email }, ["-updatedAt", "-__v", "-products", "-resetPass"]);
-        if (!seller) return next(errorModel(400, 'No user found'));
+        if (!seller) return next(errorModel(400, 'No seller found'));
 
         const validPass = await bcrypt.compare(password, seller.password);
         if (!validPass) return next(errorModel(400, 'Email or password is invalid'));
@@ -133,7 +133,7 @@ exports.deleteSeller = async (req, res, next) => {
     try {
         const seller = await Seller.findById(_id);
         
-        if (!seller) return next(errorModel(404, "User Not Found"));
+        if (!seller) return next(errorModel(404, "seller Not Found"));
         if (!seller.activated) return next(errorModel(400, 'You need to verify your email first'));
         if (seller.ban) return next(errorModel(401, 'You are banned'));
 
