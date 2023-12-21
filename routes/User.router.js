@@ -14,16 +14,16 @@ router.post('/change-pass', changePassword);
 // Update User
 router.put('/:userId', updateUser);
 
-// Delete User
-router.delete('/:userId', deleteUser);
-
-// Get User
-router.get('/:userId', getUser);
-
 // Get Favorits
 router.get('/favorits', getFavorits);
 
 // Add Product To Favorits
 router.post('/favorits', addFavorite);
+
+// Delete User
+router.delete('/:userId', deleteUser);
+
+// Get User
+router.get('/:userId', getUser);
 
 module.exports = router;

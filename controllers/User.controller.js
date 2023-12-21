@@ -1,4 +1,7 @@
 const User = require("../models/User");
+const Product = require("../models/Product");
+const Review = require("../models/Review");
+const Report = require("../models/Report");
 
 const jwt = require("jsonwebtoken");
 const sendEmail = require("../utils/sendEmail");
@@ -89,25 +92,69 @@ exports.changePassword = async (req, res, next) => {
 
 // Update User
 exports.updateUser = async (req, res, next) => {
-    res.send('Update User')
+    const user = req.user;
+    const { name, email, phone, country, city, postCode } = req.body;
+    const file = req.file;
+    if (!file && Object.keys(req.body).length === 0) return next(errorModel(400, "Provide At Least One Field"));
+
+    try {
+
+        if (file) {
+            // ...
+        }
+
+        if (name) user.name = name;
+        if (email) user.email = email;
+        if (phone) user.phone = phone;
+        if (country) user.country = country;
+        if (city) user.city = city;
+        if (postCode) user.postCode = postCode;
+
+        await user.save();
+
+        res.status(200).json({ msg: "User Info Upated" });
+    } catch (error) { next(error) }
 }
 
 // Delete User
 exports.deleteUser = async (req, res, next) => {
-    res.send('Delete User')
+    const { _id, favorites, image } = req.user;
+
+    try {
+        // delete user Image ...
+
+        const userReviews = await Review.find({ user: _id });
+        for (let rev of userReviews) {
+            await Product.updateOne({ _id: rev.productId }, { $inc: -1 });
+            await rev.deleteOne();
+        }
+
+        for (let fav of favorites) {
+            await Product.updateOne({ _id: fav }, { $inc: -1 });
+        }
+
+        await Report.deleteMany({ user: _id });
+        await User.deleteOne({ _id });
+    } catch (error) { next(error) }
 }
 
 // Get User
 exports.getUser = async (req, res, next) => {
-    res.send('Get User')
+    const { userId } = reqparams;
+
+    try {
+        const user = User.findById(userId, ["name", "email", "image", "phone", "adress"]);
+
+        res.status(200).json(user)
+    } catch (error) { next(error) }
 }
 
 // Get Favorits
-exports.getFavorits = async (req,res,next) => {
+exports.getFavorits = async (req, res, next) => {
 
 }
 
 // Add Product To Favorits
-exports.addFavorite = async (req,res,next) => {
+exports.addFavorite = async (req, res, next) => {
 
 }
