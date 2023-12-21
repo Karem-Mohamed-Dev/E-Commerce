@@ -15,7 +15,6 @@ const UserSchema = new Schema({
     role: { type: String, default: 'user' },
     ban: { type: Boolean, default: false },
     favorites: [{ type: Schema.Types.ObjectId, ref: "Product" }],
-    cart: { type: Schema.Types.ObjectId, ref: "Cart", default: null },
     orders: [{ type: Schema.Types.ObjectId, ref: "Order" }],
     resetPass: { code: { type: String, default: null }, expiresAt: { type: Date, default: null } }
 }, { timestamps: true })
