@@ -8,7 +8,7 @@ exports.getCategorys = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     try {
-        const categoriesCount = await Brand.countDocuments({});
+        const categoriesCount = await Category.countDocuments({});
         const categories = await Category.find({})
             .skip(skip).limit(limit);
 
