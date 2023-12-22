@@ -6,6 +6,7 @@ const Review = require("../models/Review");
 
 const { isMongoId } = require("validator");
 const errorModel = require("../utils/errorModel");
+const Report = require("../models/Report");
 
 // Search
 exports.search = async (req, res, next) => {
@@ -178,6 +179,7 @@ exports.reviewProduct = async (req, res, next) => {
 
 // Delete Product Review
 exports.unReviewProduct = async (req, res, next) => {
+    const { _id } = req.user;
     const { productId, reviewId } = req.params;
     if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
     if (!isMongoId(reviewId)) return next(errorModel(400, "Review Id Is Invalid"));
@@ -188,6 +190,7 @@ exports.unReviewProduct = async (req, res, next) => {
 
         const review = await Review.findById(reviewId);
         if (!review) return next(errorModel(400, "Review not found"));
+        if (review.user !== _id) return next(errorModel(401, "You Must by the comment creator"));
 
         await review.deleteOne();
         await Product.updateOne({ _id: productId }, { reviews: { $inc: -1 } })
@@ -198,5 +201,18 @@ exports.unReviewProduct = async (req, res, next) => {
 
 // Report Product
 exports.reportProduct = async (req, res, next) => {
-    res.send("Report Product");
+    const { _id } = req.user;
+    const { productId } = req.params;
+    const { content } = req.body
+    if (!content) return next(errorModel(400, "Must provide a report content"));
+    if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
+
+    try {
+        const product = await Product.findById(productId);
+        if (!product) return next(errorModel(400, "Product not found"));
+
+        await Report.create({ user: _id, productId, content });
+
+        res.status(200).json({ msg: "Reported successfully" });
+    } catch (error) { next(error) }
 }
