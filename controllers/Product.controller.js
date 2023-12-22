@@ -54,7 +54,7 @@ exports.createProduct = async (req, res, next) => {
 // Get Product
 exports.getProduct = async (req, res, next) => {
     const { productId } = req.params;
-    if (!isMongoId(productId)) return next(errorModel(400, "productId Id Is Invalid"));
+    if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
 
     try {
         const product = await Product.findById(productId, ["-favorited", "-sold"])
@@ -72,7 +72,7 @@ exports.editProduct = async (req, res, next) => {
     const files = req.files;
 
     if (files.length === 0 && Object.keys(req.body).length === 0) return next(errorModel(400, "Provide at least one field"));
-    if (!isMongoId(productId)) return next(errorModel(400, "productId Id Is Invalid"));
+    if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
 
     try {
         const product = await Product.findById(productId, ["-favorited", "-sold"])
@@ -110,7 +110,7 @@ exports.editProduct = async (req, res, next) => {
 // Delete Product
 exports.deleteProduct = async (req, res, next) => {
     const { productId } = req.params;
-    if (!isMongoId(productId)) return next(errorModel(400, "productId Id Is Invalid"));
+    if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
 
     try {
         const product = await Product.findById(productId);
@@ -124,14 +124,76 @@ exports.deleteProduct = async (req, res, next) => {
     } catch (error) { next(error) }
 }
 
-// Review Product
-exports.reviewProduct = async (req, res, next) => {
-    res.send("Review Product");
-}
-
 // Get Product Reviews
 exports.productReviews = async (req, res, next) => {
-    res.send("Product Reviews");
+    const { productId } = req.params;
+    const page = +req.query.page || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+    if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
+
+    try {
+        const reviewsCount = await Product.countDocuments({ productId });
+        const product = await Product.findById(productId);
+        if (!product) return next(errorModel(400, "Product not found"));
+
+        const reviews = await Review.find({ productId })
+            .skip(skip).limit(limit).populate('user', ["name", "image"]);
+
+        res.status(200).json({
+            result: reviewsCount,
+            pagenationData: {
+                currentPage: page,
+                totalPages: Math.ceil(reviewsCount / limit)
+            },
+            reviews
+        });
+    } catch (error) { next(error) }
+}
+
+// Review Product
+exports.reviewProduct = async (req, res, next) => {
+    const { _id } = req.user;
+    const { productId } = req.params;
+    const { comment, rating } = req.body;
+    if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
+    if (!rating) return next(errorModel(400, "Rating is required"));
+
+    try {
+        const product = await Product.findById(productId);
+        if (!product) return next(errorModel(400, "Product not found"));
+
+        const data = {}
+        data.user = _id;
+        data.productId = productId
+        data.rating = rating;
+        if (comment) data.comment = comment;
+
+        const review = await Review.create(data)
+        await Product.updateOne({ _id: productId }, { reviews: { $inc: 1 } })
+
+        res.status(200).json(review);
+    } catch (error) { next(error) }
+}
+
+// Delete Product Review
+exports.unReviewProduct = async (req, res, next) => {
+    const { productId, reviewId } = req.params;
+    if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
+    if (!isMongoId(reviewId)) return next(errorModel(400, "Review Id Is Invalid"));
+
+    try {
+        const product = await Product.findById(productId);
+        if (!product) return next(errorModel(400, "Product not found"));
+
+        const review = await Review.findById(reviewId);
+        if (!review) return next(errorModel(400, "Review not found"));
+
+        await review.deleteOne();
+        await Product.updateOne({ _id: productId }, { reviews: { $inc: -1 } })
+
+        res.status(200).json({ msg: "Review deleted successfully" });
+    } catch (error) { next(error) }
 }
 
 // Report Product
