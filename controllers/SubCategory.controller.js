@@ -2,6 +2,9 @@ const SubCategory = require('../models/SubCategory');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 
+const { isMongoId } = require("validator");
+const errorModel = require("../utils/errorModel");
+
 // Get SubCategorys
 exports.getSubCategorys = async (req, res, next) => {
     const { categoryId } = req.params;
@@ -15,10 +18,10 @@ exports.getSubCategorys = async (req, res, next) => {
 // Create SubCategory
 exports.createSubCategory = async (req, res, next) => {
     const { categoryId } = req.params;
-    const { name } = req.body;
-    const file = req.file;
-    if (!name || !file) return next(errorModel(400, "Name and Image must be provided"));
     if (!isMongoId(categoryId)) return next(errorModel(400, "Please Provide a Valid Category Id"));
+    const { name } = req.body;
+    // const file = req.file;
+    // if (!name || !file) return next(errorModel(400, "Name and Image must be provided"));
 
     const slug = name.split(" ").join("-");
     try {
@@ -26,20 +29,20 @@ exports.createSubCategory = async (req, res, next) => {
         if (!category) return next(errorModel(400, "No Category Found"));
 
         // Image Upload
-        const image = { url: "", publicId: "" }; // Simulation until add image upload
+        const image = { url: "123", publicId: "123" }; // Simulation until add image upload
 
         const subCategory = await SubCategory.create({ name, slug, image, categoryId })
-        res.status(200).json(subCategory);
+        res.status(201).json(subCategory);
     } catch (error) { next(error) }
 }
 
 // Edit SubCategory
 exports.editSubCategory = async (req, res, next) => {
     const { subId } = req.params;
+    if (!isMongoId(subId)) return next(errorModel(400, "Please Provide a Valid Category Id"));
     const { name } = req.body;
     const file = req.file;
     if (!file && !name) return next(errorModel(400, "Please Provide at least one field"))
-    if (!isMongoId(subId)) return next(errorModel(400, "Please Provide a Valid Category Id"));
 
     try {
         const subCategory = await SubCategory.findById(subId);
@@ -50,6 +53,7 @@ exports.editSubCategory = async (req, res, next) => {
             // upload new image
         }
         if (name) {
+            await Product.updateMany({ subCategory: subCategory.name }, { subCategory: name });
             subCategory.name = name;
             subCategory.slug = name.split(" ").join("-");
         }
@@ -70,6 +74,6 @@ exports.deleteSubCategory = async (req, res, next) => {
         await SubCategory.deleteOne();
         await Product.updateMany({ subCategory: subCategory.name }, { subCategory: null });
 
-        res.status(200).json({msg: "SubCategory deleted successfully"});
+        res.status(200).json({ msg: "SubCategory deleted successfully" });
     } catch (error) { next(error) }
 }

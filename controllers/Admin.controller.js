@@ -4,7 +4,7 @@ const Report = require("../models/Report");
 
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
-const { isEmail, isStrongPassword } = require("validator");
+const { isEmail, isStrongPassword, isMongoId } = require("validator");
 const errorModel = require("../utils/errorModel");
 const sendEmail = require("../utils/sendEmail");
 
@@ -46,13 +46,14 @@ exports.addAdmin = async (req, res, next) => {
         const admin = await Admin.create({ name, email, password: hash });
         const { password: pass, updatedAt, __v, resetPass, ...other } = admin._doc;
         const token = generateToken(admin._id, 'admin');
-        res.status(200).json({ token, ...other });
+        res.status(201).json({ token, ...other });
     } catch (error) { next(error) }
 }
 
 // Delete Admin
 exports.deleteAdmin = async (req, res, next) => {
     const { adminId } = req.params;
+    if (!isMongoId(adminId)) return next(errorModel(400, "Please Provide a Valid Admin Id"));
 
     try {
         const admin = await Admin.findById(adminId);
@@ -86,23 +87,47 @@ exports.sellerSearch = async (req, res, next) => {
 
 // Get Warned Sellers
 exports.warned = async (req, res, next) => {
+    const page = +req.query.page || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+    try {
+        const sellersCount = await Seller.countDocuments({ warnings: { $gt: 0 } });
+        const sellers = await Seller.find({ warnings: { $gt: 0 } }, ["_id", "name", "image"])
+            .skip(skip).limit(limit);
 
-    // try {
-    //     const sellers = await Seller.find({ warnings: { $gtr: 0 } })
+        res.status(200).json({
+            result: sellersCount,
+            pagenationData: {
+                currentPage: page,
+                totalPages: Math.ceil(sellersCount / limit)
+            },
+            sellers
+        });
 
-    // } catch (error) { next(error) }
+    } catch (error) { next(error) }
 }
 
 // Warn Sellers
 exports.warn = async (req, res, next) => {
     const { sellerId } = req.params;
+    if (!isMongoId(sellerId)) return next(errorModel(400, "Please Provide a Valid Seller Id"));
+
     const { content } = req.body;
+    if (!content) return next(errorModel(400, "Please Provide a Warning Content"));
 
     try {
-        const seller = await Seller.findOne(sellerId);
+        const seller = await Seller.findById(sellerId);
         if (!seller) return next(errorModel(404, "Seller Not Found"));
 
-        seller.warning += 1;
+        if (seller.warnings >= 3) {
+            if (seller.ban) return next(errorModel(404, "User Got More than 3 Warnings And Banned Already"));
+            seller.ban = true;
+            await seller.save();
+            sendEmail(seller.email, "Ban", content);
+            return res.status(200).json({ msg: 'Seller Got More than 3 Warnings Already So He Got Banned' });
+        }
+
+        seller.warnings += 1;
         await seller.save();
         sendEmail(seller.email, "Warning", content);
 
@@ -113,14 +138,21 @@ exports.warn = async (req, res, next) => {
 // UnWarn Sellers
 exports.unWarn = async (req, res, next) => {
     const { sellerId } = req.params;
+    if (!isMongoId(sellerId)) return next(errorModel(400, "Please Provide a Valid Seller Id"));
 
     try {
-        const seller = await Seller.findOne(sellerId);
+        const seller = await Seller.findById(sellerId);
         if (!seller) return next(errorModel(404, "Seller Not Found"));
 
-        seller.warning -= 1;
+        if (seller.warnings === 0) return next(errorModel(400, "There Is No Seller Warnings To Remove"));
+
+        if (seller.warnings === 3) {
+            sendEmail(seller.email, "UnBaned", "We Romved One Warning And UnBanned Your Account");
+            seller.ban = false;
+        } else sendEmail(seller.email, "Warning", "We Romved One Warning From Your Account");
+
+        seller.warnings -= 1;
         await seller.save();
-        sendEmail(seller.email, "Warning", "We Romved One Warning From Your Account");
 
         res.status(200).json({ msg: 'Seller UnWarned successfully' });
     } catch (error) { next(error) }
@@ -134,7 +166,7 @@ exports.banned = async (req, res, next) => {
 
     try {
         const bannedCount = await Seller.countDocuments({ ban: true });
-        const sellers = await Seller.find({ ban: true })
+        const sellers = await Seller.find({ ban: true }, ['name', 'image'])
             .skip(skip).limit(limit);
 
         res.status(200).json({
@@ -151,9 +183,10 @@ exports.banned = async (req, res, next) => {
 // Ban Sellers
 exports.ban = async (req, res, next) => {
     const { sellerId } = req.params;
+    if (!isMongoId(sellerId)) return next(errorModel(400, "Please Provide a Valid Seller Id"));
 
     try {
-        const seller = await Seller.findOne(sellerId);
+        const seller = await Seller.findById(sellerId);
         if (!seller) return next(errorModel(404, "Seller Not Found"));
 
         seller.ban = true;
@@ -167,14 +200,15 @@ exports.ban = async (req, res, next) => {
 // UnBan Sellers
 exports.unBan = async (req, res, next) => {
     const { sellerId } = req.params;
+    if (!isMongoId(sellerId)) return next(errorModel(400, "Please Provide a Valid Seller Id"));
 
     try {
-        const seller = await Seller.findOne(sellerId);
+        const seller = await Seller.findById(sellerId);
         if (!seller) return next(errorModel(404, "Seller Not Found"));
 
         seller.ban = false;
         await seller.save();
-        sendEmail(seller.email, "UnBan", "You Got UnBanned ");
+        sendEmail(seller.email, "UnBan", "You Got UnBanned");
 
         res.status(200).json({ msg: 'Seller UnBanned successfully' });
     } catch (error) { next(error) }
@@ -188,8 +222,10 @@ exports.reports = async (req, res, next) => {
 
     try {
         const reportesCount = await Report.countDocuments({});
-        const reports = await Report.find({})
-        .skip(skip).limit(limit);
+        const reports = await Report.find({}, ["-__v", "-updatedAt"])
+            .skip(skip).limit(limit)
+            .populate('productId', ["title", "media", "price", "rating"])
+            .populate('user', ['name', 'email', 'images']);
 
         res.status(200).json({
             result: reportesCount,

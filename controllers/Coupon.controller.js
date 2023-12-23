@@ -1,5 +1,5 @@
 const Coupone = require('../models/Coupon');
-const { isMongoId } = require("validators");
+const { isMongoId } = require("validator");
 const errorModel = require('../utils/errorModel');
 // Get Coupons
 exports.getCoupons = async (req, res, next) => {
@@ -50,7 +50,7 @@ exports.createCoupon = async (req, res, next) => {
     try {
         const coupone = await Coupone.create({ creator: _id, code, discount, expiresAt, maxUses });
 
-        res.status(200).json({ ...coupone, creator: name })
+        res.status(201).json({ ...coupone, creator: name })
     } catch (error) { next(error) }
 }
 

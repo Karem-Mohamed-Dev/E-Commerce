@@ -7,9 +7,10 @@ exports.getCart = async (req, res, next) => {
     const user = req.user;
 
     try {
-        const cart = await Cart.findOne({ user: user._id })
+        const cart = await Cart.findOne({ user: user._id }, 'products').populate('products.product', ["title", "media", "price", "rating"])
         if (!cart) return res.status(200).json([]);
-        res.status(200).json(cart);
+
+        res.status(200).json(cart.products);
     } catch (error) { next(error) }
 }
 
@@ -21,7 +22,7 @@ exports.addItem = async (req, res, next) => {
 
     try {
         let cart = await Cart.findOne({ user: user._id });
-        const product = await Product.findOne({ productId });
+        const product = await Product.findById(productId);
         if(!product) return next(errorModel(400, "Couldn't find Product"));
 
         if (!cart) {

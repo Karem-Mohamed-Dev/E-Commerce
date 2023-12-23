@@ -1,6 +1,9 @@
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 
+const errorModel = require('../utils/errorModel');
+const { isMongoId } = require("validator");
+
 // Get Categorys
 exports.getCategorys = async (req, res, next) => {
     const page = +req.params.page || 1;
@@ -26,30 +29,31 @@ exports.getCategorys = async (req, res, next) => {
 // Create Category
 exports.createCategory = async (req, res, next) => {
     const { name } = req.body;
-    const file = req.file;
-    if (!name || !file) return next(errorModel(400, "Name and Image must be provided"));
+    // const file = req.file;
+    // if (!name || !file) return next(errorModel(400, "Name and Image must be provided"));
 
     const slug = name.split(" ").join("-");
     try {
         // Image Upload
-        const image = { url: "", publicId: "" }; // Simulation until add image upload
+        const image = { url: "123", publicId: "123" }; // Simulation until add image upload
 
         const category = await Category.create({ name, slug, image });
 
-        res.status(200).json({ category: category._doc });
+        res.status(201).json(category);
     } catch (error) { next(error) }
 }
 
 // Edit Category
 exports.editCategory = async (req, res, next) => {
     const { categoryId } = req.params;
+    if (!isMongoId(categoryId)) return next(errorModel(400, "Please Provide a Valid Category Id"));
     const { name } = req.body;
     const file = req.file;
     if (!name && !file) return next(errorModel(400, "Name or Image must be provided"));
-    if (!isMongoId(categoryId)) return next(errorModel(400, "Please Provide a Valid Category Id"));
 
     try {
         const category = await Category.findById(categoryId);
+        if (!category) return next(errorModel(400, "Category not found"));
 
         if (file) {
             // Current Image Delete
@@ -57,10 +61,15 @@ exports.editCategory = async (req, res, next) => {
             const image = { url: "", publicId: "" }; // Simulation until add image upload
             category.image = image;
         }
-        if (name) category.name = name;
+        if (name) {
+            await Product.updateMany({ category: category.name }, { category: name });
+            category.name = name;
+            category.slug = name.split(" ").join("-");
+        }
 
         await category.save();
-        res.status(200).json({ category: category._doc });
+        
+        res.status(200).json(category);
     } catch (error) { next(error) }
 }
 

@@ -7,19 +7,19 @@ const jwt = require("jsonwebtoken");
 const sendEmail = require("../utils/sendEmail");
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
-const { isEmail, isStrongPassword, isMongoId, isEmpty } = require("validator");
+const { isEmail, isStrongPassword, isMongoId } = require("validator");
 const errorModel = require("../utils/errorModel");
 
 // Login
 exports.login = async (req, res, next) => {
     const { email, password } = req.body;
-    if (!email || !password) return next(errorModel(400, 'All fields are reqired'));
+    if (!email || !password) return next(errorModel(400, 'Email and Password are reqired'));
 
     if (!isEmail(email)) return next(errorModel(400, 'Please enter a valid email'))
     if (!isStrongPassword(password)) return next(errorModel(400, "Password must be at least 8 with one character upper case and one character lower case and one symbol"));
 
     try {
-        const user = await User.findOne({ email }, ["-updatedAt", "-__v", "-products", "-resetPass"]);
+        const user = await User.findOne({ email }, ["-updatedAt", "-__v", "-resetPass", "-favorites", "-orders"]);
         if (!user) return next(errorModel(400, 'No user found'));
 
         const validPass = await bcrypt.compare(password, user.password);
@@ -31,7 +31,7 @@ exports.login = async (req, res, next) => {
             sendEmail(email, "Verify Your Email", `
          "<p>To verify your account <a href="http://localhost:5000/api/v1/auth/verify/${verifyToken}">Click Here<a></p>
         ` )
-            return next(errorModel(400, 'Your account is not activated'));
+            return next(errorModel(400, 'Your account is not activated we sent email with activation link'));
         }
 
         const { password: pass, ...other } = user._doc;
@@ -42,9 +42,9 @@ exports.login = async (req, res, next) => {
 // Register
 exports.register = async (req, res, next) => {
     const { name, email, password } = req.body;
-    if (!name || !email || !password) return next(errorModel(400, 'All fields are reqired'));
+    if (!name || !email || !password) return next(errorModel(400, 'Name, Email, and Password are reqired'));
 
-    if (name.length < 2 || name.length > 20) return next(errorModel(400, "name can't be less than 2 or bigger than 20 characters"));
+    if (name.length < 2 || name.length > 20) return next(errorModel(400, "Name can't be less than 2 or bigger than 20 characters"));
     if (!isEmail(email)) return next(errorModel(400, "Please enter a valid email"))
     if (!isStrongPassword(password)) return next(errorModel(400, "Password must be at least 8 with one character upper case and one character lower case and one symbol"));
 
@@ -55,7 +55,7 @@ exports.register = async (req, res, next) => {
         const hash = await bcrypt.hash(password, 10);
         const user = await User.create({ name, email, password: hash });
 
-        const { password: pass, updatedAt, __v, products, resetPass, ...other } = user._doc;
+        const { password: pass, updatedAt, __v, favorites, orders, resetPass, ...other } = user._doc;
         const token = generateToken(user._id, 'user');
 
         const verifyToken = jwt.sign({ email, role: "user" }, process.env.SECRET, { expiresIn: '1h' });
@@ -63,7 +63,7 @@ exports.register = async (req, res, next) => {
          "<p>To verify your account <a href="http://localhost:5000/api/v1/auth/verify/${verifyToken}">Click Here<a></p>
         ` )
 
-        res.status(200).json({ token, ...other });
+        res.status(201).json({ token, ...other });
     } catch (error) { next(error) }
 }
 
@@ -72,7 +72,7 @@ exports.changePassword = async (req, res, next) => {
     const user = req.user;
     const { oldPass, newPass } = req.body;
 
-    if (!oldPass || !newPass) return next(errorModel(400, "All fields are reqired"));
+    if (!oldPass || !newPass) return next(errorModel(400, "oldPass and newPass are reqired"));
     if (oldPass === newPass) return next(errorModel(400, "New Password must be diffrent"));
 
     if (!isStrongPassword(oldPass)) return next(errorModel(400, "Old Password must be at least 8 with one character upper case and one character lower case and one symbol"));
@@ -98,18 +98,15 @@ exports.updateUser = async (req, res, next) => {
     if (!file && Object.keys(req.body).length === 0) return next(errorModel(400, "Provide At Least One Field"));
 
     try {
-
         if (file) {
             // ...
         }
-
         if (name) user.name = name;
         if (email) user.email = email;
         if (phone) user.phone = phone;
         if (country) user.country = country;
         if (city) user.city = city;
         if (postCode) user.postCode = postCode;
-
         await user.save();
 
         res.status(200).json({ msg: "User Info Upated" });
@@ -125,16 +122,17 @@ exports.deleteUser = async (req, res, next) => {
 
         const userReviews = await Review.find({ user: _id });
         for (let rev of userReviews) {
-            await Product.updateOne({ _id: rev.productId }, { $inc: -1 });
+            await Product.updateOne({ _id: rev.productId }, { $inc: { reviews: -1 } });
             await rev.deleteOne();
         }
 
         for (let fav of favorites) {
-            await Product.updateOne({ _id: fav }, { $inc: -1 });
+            await Product.updateOne({ _id: fav }, { $inc: { favorited: -1 } });
         }
 
         await Report.deleteMany({ user: _id });
         await User.deleteOne({ _id });
+        res.status(200).json({msg: "User deleted successfully"});
     } catch (error) { next(error) }
 }
 
@@ -144,7 +142,7 @@ exports.getUser = async (req, res, next) => {
     if (!isMongoId(userId)) return next(errorModel(400, "Please Provide a Valid User Id"))
 
     try {
-        const user = User.findById(userId, ["name", "email", "image", "phone", "adress"]);
+        const user = await User.findById(userId, ["name", "email", "image", "phone", "adress"]);
 
         res.status(200).json(user)
     } catch (error) { next(error) }
@@ -155,7 +153,7 @@ exports.getFavorites = async (req, res, next) => {
     const user = req.user;
 
     try {
-        const favorites = user.favorites;
+        const favorites = await Product.find({ _id: user.favorites }, ['title', 'description', 'price', 'media', 'discount', 'rating'])
         res.status(200).json({ result: favorites.length, favorites });
     } catch (error) { next(error) }
 }
@@ -172,7 +170,7 @@ exports.addFavorite = async (req, res, next) => {
 
         user.favorites.push(productId);
         await user.save();
-        await product.updateOne({ favorited: { $inc: 1 } });
+        await product.updateOne({ $inc: { favorited: 1 } });
 
         res.status(200).json({ msg: "Successfully added" });
     } catch (error) { next(error) }
@@ -189,7 +187,7 @@ exports.removeFavorite = async (req, res, next) => {
 
         user.favorites.pull(productId);
         await user.save();
-        if (product) await product.updateOne({ favorited: { $inc: -1 } });
+        await product.updateOne({ $inc: { favorited: -1 } });
 
         res.status(200).json({ msg: "Successfully removed" });
     } catch (error) { next(error) }

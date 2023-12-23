@@ -7,6 +7,7 @@ const Review = require("../models/Review");
 const { isMongoId } = require("validator");
 const errorModel = require("../utils/errorModel");
 const Report = require("../models/Report");
+const calcRating = require("../utils/calcRating");
 
 // Search
 exports.search = async (req, res, next) => {
@@ -15,11 +16,12 @@ exports.search = async (req, res, next) => {
 
 // Create Product
 exports.createProduct = async (req, res, next) => {
-    const { _id } = req.seller;
+    const seller = req.seller;
     const { title, description, category, subCategory, price, brand, stock, discount } = req.body;
-    const files = req.files;
+    // const files = req.files;
 
-    if (!title || !description || !category || !price || files.length === 0) return next(errorModel(400, "title, description, category, price and product images are required"));
+    // if (!title || !description || !category || !price || files.length === 0) return next(errorModel(400, "title, description, category, price and product images are required"));
+    if (!title || !description || !category || !price) return next(errorModel(400, "title, description, category, price and product images are required"));
     if (!isMongoId(category)) return next(errorModel(400, "Category Id Is Invalid"));
 
     try {
@@ -44,9 +46,12 @@ exports.createProduct = async (req, res, next) => {
         if (!categoryData) return next(errorModel(400, "Category not Found"));
 
         // image uploda
-        const media = [{ url: "", publicId: "" }] // Simulation until add image upload
+        const media = [{ url: "123", publicId: "123" }] // Simulation until add image upload
 
-        const product = await Product.create({ seller: _id, title, description, category: categoryData.name, price, media, ...data })
+        const product = await Product.create({ seller: seller._id, title, description, category: categoryData.name, price, media, ...data })
+
+        seller.products.push(product._id);
+        await seller.save();
 
         res.status(201).json(product)
     } catch (error) { next(error) }
@@ -69,18 +74,20 @@ exports.getProduct = async (req, res, next) => {
 // Edit Product
 exports.editProduct = async (req, res, next) => {
     const { productId } = req.params;
-    const { title, description, category, subCategory, price, brand, stock, discount } = req.body;
-    const files = req.files;
-
-    if (files.length === 0 && Object.keys(req.body).length === 0) return next(errorModel(400, "Provide at least one field"));
     if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
 
+    const { title, description, category, subCategory, price, brand, stock, discount } = req.body;
+    const files = req.files || [];
+
+    if (files.length === 0 && Object.keys(req.body).length === 0) return next(errorModel(400, "Provide at least one field"));
+
     try {
-        const product = await Product.findById(productId, ["-favorited", "-sold"])
-            .populate("seller", ["name", "image"]);
+        const product = await Product.findById(productId, ["-favorited", "-sold", "-updatedAt", "-__v"])
         if (!product) return next(errorModel(400, "Product not found"));
+        if (product.seller.toString() !== req.seller._id.toString()) return next(errorModel(401, "Not Authorized"));
 
         if (category) {
+            if (!isMongoId(category)) return next(errorModel(400, "Category Id Is Invalid"));
             const categoryData = await Category.findById(category);
             if (!categoryData) return next(errorModel(400, "Category not Found"));
             product.category = categoryData;
@@ -102,22 +109,26 @@ exports.editProduct = async (req, res, next) => {
         if (price) product.price = price;
         if (stock) product.stock = stock;
         if (discount) product.discount = discount;
-        const updatedProduct = await product.save();
+        await product.save();
 
-        res.status(200).json(updatedProduct._doc);
+        res.status(200).json(product);
     } catch (error) { next(error) }
 }
 
 // Delete Product
 exports.deleteProduct = async (req, res, next) => {
+    const seller = req.seller;
     const { productId } = req.params;
     if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
 
     try {
         const product = await Product.findById(productId);
         if (!product) return next(errorModel(400, "Product not found"));
+        if (product.seller.toString() !== seller._id.toString()) return next(errorModel(401, "Not Authorized"));
 
         // Delete product images ...
+        seller.products.pull(product._id);
+        await seller.save();
 
         await Review.deleteMany({ productId });
         await product.deleteOne();
@@ -128,10 +139,10 @@ exports.deleteProduct = async (req, res, next) => {
 // Get Product Reviews
 exports.productReviews = async (req, res, next) => {
     const { productId } = req.params;
+    if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
     const page = +req.query.page || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
-    if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
 
     try {
         const reviewsCount = await Product.countDocuments({ productId });
@@ -156,9 +167,9 @@ exports.productReviews = async (req, res, next) => {
 exports.reviewProduct = async (req, res, next) => {
     const { _id } = req.user;
     const { productId } = req.params;
-    const { comment, rating } = req.body;
     if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
-    if (!rating) return next(errorModel(400, "Rating is required"));
+    const { comment, rating } = req.body;
+    if (rating === undefined) return next(errorModel(400, "Rating is required"));
 
     try {
         const product = await Product.findById(productId);
@@ -171,9 +182,13 @@ exports.reviewProduct = async (req, res, next) => {
         if (comment) data.comment = comment;
 
         const review = await Review.create(data)
-        await Product.updateOne({ _id: productId }, { reviews: { $inc: 1 } })
+        const rates = await calcRating(product._id);
 
-        res.status(200).json(review);
+        product.reviews += 1;
+        product.rating = rates
+        await product.save();
+
+        res.status(201).json(review);
     } catch (error) { next(error) }
 }
 
@@ -190,10 +205,11 @@ exports.unReviewProduct = async (req, res, next) => {
 
         const review = await Review.findById(reviewId);
         if (!review) return next(errorModel(400, "Review not found"));
-        if (review.user !== _id) return next(errorModel(401, "You Must by the comment creator"));
+        if (review.user.toString() !== _id.toString()) return next(errorModel(401, "You Must by the comment creator"));
 
         await review.deleteOne();
-        await Product.updateOne({ _id: productId }, { reviews: { $inc: -1 } })
+        const rates = await calcRating(product._id);
+        await product.updateOne({ $inc: { reviews: -1 }, rating: rates })
 
         res.status(200).json({ msg: "Review deleted successfully" });
     } catch (error) { next(error) }
@@ -210,9 +226,9 @@ exports.reportProduct = async (req, res, next) => {
     try {
         const product = await Product.findById(productId);
         if (!product) return next(errorModel(400, "Product not found"));
-
+        
         await Report.create({ user: _id, productId, content });
 
-        res.status(200).json({ msg: "Reported successfully" });
+        res.status(201).json({ msg: "Reported successfully" });
     } catch (error) { next(error) }
 }

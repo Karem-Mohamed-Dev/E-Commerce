@@ -14,7 +14,7 @@ router.post('/register', register);
 router.post('/change-pass', isAuth, isUser, changePassword);
 
 // Update User
-router.put('/:userId', isAuth, isUser, updateUser);
+router.put('/', isAuth, isUser, updateUser);
 
 // Get Favorites
 router.get('/favorites', isAuth, isUser, getFavorites);
@@ -26,7 +26,7 @@ router.post('/favorite/:productId', isAuth, isUser, addFavorite);
 router.post('/unfavorite/:productId', isAuth, isUser, removeFavorite);
 
 // Delete User
-router.delete('/:userId', isAuth, isUser, deleteUser);
+router.delete('/', isAuth, isUser, deleteUser);
 
 // Get User
 router.get('/:userId', getUser);

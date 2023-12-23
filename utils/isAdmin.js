@@ -7,7 +7,7 @@ module.exports = async (req, res, next) => {
 
     try {
         const admin = await Admin.findById(tokenData._id);
-        if (!admin) return next(errorModel(404, "User Not Found"));
+        if (!admin) return next(errorModel(404, "Admin Not Found"));
         req.admin = admin;
         next();
     } catch (error) { next(error) }
