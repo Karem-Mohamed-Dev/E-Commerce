@@ -1,6 +1,7 @@
 const Coupone = require('../models/Coupon');
 const { isMongoId } = require("validator");
 const errorModel = require('../utils/errorModel');
+
 // Get Coupons
 exports.getCoupons = async (req, res, next) => {
     const page = +req.params.page || 1;
@@ -32,12 +33,12 @@ exports.getCoupon = async (req, res, next) => {
         const coupone = await Coupone.findOne({ code });
         if (!coupone) return next(errorModel(400, "No Coupon found"));
 
-        if (coupone.expiresAt > Date.now()) return next(errorModel(400, "Coupon Is Expired"));
+        if (coupone.expiresAt < Date.now()) return next(errorModel(400, "Coupon Is Expired"));
         if (coupone.numOfUses >= coupone.maxUses) {
             await coupone.deleteOne();
             return next(errorModel(400, "Coupon Reatched maximum usage"));
         }
-        res.status(200).json(coupone.discount);
+        res.status(200).json({ discount: coupone.discount });
     } catch (error) { next(error) }
 }
 
@@ -50,24 +51,24 @@ exports.createCoupon = async (req, res, next) => {
     try {
         const coupone = await Coupone.create({ creator: _id, code, discount, expiresAt, maxUses });
 
-        res.status(201).json({ ...coupone, creator: name })
+        res.status(201).json({ ...coupone._doc, creator: name })
     } catch (error) { next(error) }
 }
 
 // Edit Coupon
 exports.editCoupon = async (req, res, next) => {
     const { couponId } = req.params;
-    if(!isMongoId(couponId)) return next(errorModel(400, "Please provide a valid coupon id")); 
+    if (!isMongoId(couponId)) return next(errorModel(400, "Please provide a valid coupon id"));
     const { code, discount, expiresAt, maxUses } = req.body;
     if (!code && !discount && !expiresAt && !maxUses) return next(errorModel(400, "Please Provide atleast one field"));
 
     try {
         const coupon = await Coupone.findById(couponId).populate('creator', 'name');
 
-        if(code) coupon.code = code;
-        if(discount) coupon.discount = discount;
-        if(expiresAt) coupon.expiresAt = expiresAt;
-        if(maxUses) coupon.maxUses = maxUses;
+        if (code) coupon.code = code;
+        if (discount) coupon.discount = discount;
+        if (expiresAt) coupon.expiresAt = expiresAt;
+        if (maxUses) coupon.maxUses = maxUses;
         await coupon.save();
 
         res.status(200).json(coupon)
@@ -77,11 +78,12 @@ exports.editCoupon = async (req, res, next) => {
 // Delete Coupon
 exports.deleteCoupon = async (req, res, next) => {
     const { couponId } = req.params;
-    if(!isMongoId(couponId)) return next(errorModel(400, "Please provide a valid coupon id"));
+    if (!isMongoId(couponId)) return next(errorModel(400, "Please provide a valid coupon id"));
 
     try {
         const coupon = await Coupone.findById(couponId).populate('creator', 'name');
+        if(!coupon) return next(errorModel(404, "Coupon not found"));
         await coupon.deleteOne();
-        res.status(200).json({msg: "Coupon deleted successfully"})
+        res.status(200).json({ msg: "Coupon deleted successfully" })
     } catch (error) { next(error) }
 }
