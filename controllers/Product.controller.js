@@ -12,7 +12,33 @@ const { cloudinary } = require("../utils/upload")
 
 // Search
 exports.search = async (req, res, next) => {
-    res.send("Search");
+    const { title, brand, category, subCategory, price, sort } = req.query;
+    const page = +req.query.page || 1;
+    const limit = 20;
+    const skip = (page - 1) * limit;
+
+    try {
+        const query = {};
+        if (title) query.title = { $regex: title, $options: 'i' };
+        if (price) query.price = { $gt: price };
+        if (brand) query.brand = brand;
+        if (category) query.category = category;
+        if (subCategory) query.subCategory = subCategory;
+        const sortBy = sort || "-createdAt"
+
+        const productsCount = await Product.countDocuments(query);
+        const products = await Product.find(query, ["-updatedAt", "-__v", "-stock", "-reviews", "-sold", "-favorited", "-description"])
+            .sort(sortBy).skip(skip).limit(limit).populate('seller', ['name', 'image']);
+
+        res.status(200).json({
+            result: productsCount,
+            pagenationData: {
+                currentPage: page,
+                totalPages: Math.ceil(productsCount / limit)
+            },
+            products
+        });
+    } catch (error) { next(error) }
 }
 
 // Create Product
@@ -30,12 +56,14 @@ exports.createProduct = async (req, res, next) => {
             if (!isMongoId(subCategory)) return next(errorModel(400, "SubCategory Id Is Invalid"));
             const subCat = await SubCategory.findById(subCategory);
             if (!subCat) return next(errorModel(400, "SubCategory not Found"));
+            await subCat.updateOne({ $inc: { products: 1 } })
             data.subCategory = subCat.name;
         }
         if (brand) {
             if (!isMongoId(brand)) return next(errorModel(400, "Brand Id Is Invalid"));
             const brandData = await Brand.findById(brand);
             if (!brandData) return next(errorModel(400, "Brand not Found"));
+            await brandData.updateOne({ $inc: { products: 1 } })
             data.brand = brandData.name;
         }
 
@@ -44,10 +72,10 @@ exports.createProduct = async (req, res, next) => {
 
         const categoryData = await Category.findById(category);
         if (!categoryData) return next(errorModel(400, "Category not Found"));
+        await categoryData.updateOne({ $inc: { products: 1 } })
 
         let media = []
         for (let image of files) {
-            console.log(image)
             const { secure_url, public_id } = await cloudinary.uploader.upload(image.path, { folder: 'product_images' });
             media.push({ url: secure_url, publicId: public_id });
         }
@@ -147,6 +175,10 @@ exports.deleteProduct = async (req, res, next) => {
         const product = await Product.findById(productId);
         if (!product) return next(errorModel(400, "Product not found"));
         if (product.seller.toString() !== seller._id.toString()) return next(errorModel(401, "Not Authorized"));
+
+        await Category.updateOne({ name: product.category }, { $inc: { products: -1 } })
+        if (product.subCategory) await SubCategory.updateOne({ name: product.subCategory }, { $inc: { products: -1 } })
+        if (product.brand) await Brand.updateOne({ name: product.brand }, { $inc: { products: -1 } })
 
         for (let image of product.media) await cloudinary.uploader.destroy(image.publicId);
         seller.products.pull(product._id);

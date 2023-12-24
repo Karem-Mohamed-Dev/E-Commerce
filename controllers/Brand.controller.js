@@ -36,7 +36,7 @@ exports.createBrand = async (req, res, next) => {
     try {
         const slug = name.split(" ").join("-");
 
-        const exist = await Brand.find({ name });
+        const exist = await Brand.findOne({ name });
         if(exist) return next(errorModel(400, "Brand name already exist"));
 
         const { secure_url, public_id } = await cloudinary.uploader.upload(file, { folder: 'brand_images' });

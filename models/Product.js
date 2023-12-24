@@ -1,8 +1,8 @@
 const { Schema, model } = require("mongoose");
 
 const ProductSchema = new Schema({
-    title: { type: String, required: [true, "Product Title Is Required"] },
-    description: { type: String, required: [true, "Product Description Is Required"] },
+    title: { type: String, required: [true, "Product Title Is Required"], trim: true },
+    description: { type: String, required: [true, "Product Description Is Required"], trim: true },
     media: [{ url: { type: String, required: [true, "Url Is Required"] }, publicId: { type: String, required: [true, "Public Id Is Required"] } }],
     category: { type: String, required: [true, "Category Is Required"] },
     subCategory: { type: String, default: null },
