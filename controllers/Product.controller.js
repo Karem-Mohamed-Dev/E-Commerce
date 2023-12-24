@@ -8,6 +8,7 @@ const { isMongoId } = require("validator");
 const errorModel = require("../utils/errorModel");
 const Report = require("../models/Report");
 const calcRating = require("../utils/calcRating");
+const { cloudinary } = require("../utils/upload")
 
 // Search
 exports.search = async (req, res, next) => {
@@ -18,10 +19,9 @@ exports.search = async (req, res, next) => {
 exports.createProduct = async (req, res, next) => {
     const seller = req.seller;
     const { title, description, category, subCategory, price, brand, stock, discount } = req.body;
-    // const files = req.files;
+    const files = req.files;
 
-    // if (!title || !description || !category || !price || files.length === 0) return next(errorModel(400, "title, description, category, price and product images are required"));
-    if (!title || !description || !category || !price) return next(errorModel(400, "title, description, category, price and product images are required"));
+    if (!title || !description || !category || !price || files.length === 0) return next(errorModel(400, "title, description, category, price and product images are required"));
     if (!isMongoId(category)) return next(errorModel(400, "Category Id Is Invalid"));
 
     try {
@@ -45,8 +45,12 @@ exports.createProduct = async (req, res, next) => {
         const categoryData = await Category.findById(category);
         if (!categoryData) return next(errorModel(400, "Category not Found"));
 
-        // image uploda
-        const media = [{ url: "123", publicId: "123" }] // Simulation until add image upload
+        let media = []
+        for (let image of files) {
+            console.log(image)
+            const { secure_url, public_id } = await cloudinary.uploader.upload(image.path, { folder: 'product_images' });
+            media.push({ url: secure_url, publicId: public_id });
+        }
 
         const product = await Product.create({ seller: seller._id, title, description, category: categoryData.name, price, media, ...data })
 
@@ -76,10 +80,10 @@ exports.editProduct = async (req, res, next) => {
     const { productId } = req.params;
     if (!isMongoId(productId)) return next(errorModel(400, "Product Id Is Invalid"));
 
-    const { title, description, category, subCategory, price, brand, stock, discount } = req.body;
-    const files = req.files || [];
+    const { title, description, category, subCategory, price, brand, stock, discount, deleteImages } = req.body;
+    const files = req.files;
 
-    if (files.length === 0 && Object.keys(req.body).length === 0) return next(errorModel(400, "Provide at least one field"));
+    if (!files && Object.keys(req.body).length === 0) return next(errorModel(400, "Provide at least one field"));
 
     try {
         const product = await Product.findById(productId, ["-favorited", "-sold", "-updatedAt", "-__v"])
@@ -109,6 +113,24 @@ exports.editProduct = async (req, res, next) => {
         if (price) product.price = price;
         if (stock) product.stock = stock;
         if (discount) product.discount = discount;
+
+        if (files) {
+            const media = [];
+            for (let image of files) {
+                const { secure_url, public_id } = await cloudinary.uploader.upload(image.path, { folder: 'product_images' })
+                media.push({ url: secure_url, publicId: public_id })
+            }
+            product.media.push(...media);
+        }
+
+        if (deleteImages) {
+            const arr = JSON.parse(deleteImages)
+            if (!Array.isArray(arr)) return next(errorModel(400, "deleteImages must be array of images public Id"));
+            for (let id of arr) {
+                await cloudinary.uploader.destroy(id);
+                product.media = product.media.filter(ele => ele.publicId !== id)
+            }
+        }
         await product.save();
 
         res.status(200).json(product);
@@ -126,12 +148,12 @@ exports.deleteProduct = async (req, res, next) => {
         if (!product) return next(errorModel(400, "Product not found"));
         if (product.seller.toString() !== seller._id.toString()) return next(errorModel(401, "Not Authorized"));
 
-        // Delete product images ...
+        for (let image of product.media) await cloudinary.uploader.destroy(image.publicId);
         seller.products.pull(product._id);
         await seller.save();
-
         await Review.deleteMany({ productId });
         await product.deleteOne();
+
         res.status(200).json({ msg: "Product deleted successfully" });
     } catch (error) { next(error) }
 }
@@ -226,7 +248,7 @@ exports.reportProduct = async (req, res, next) => {
     try {
         const product = await Product.findById(productId);
         if (!product) return next(errorModel(400, "Product not found"));
-        
+
         await Report.create({ user: _id, productId, content });
 
         res.status(201).json({ msg: "Reported successfully" });

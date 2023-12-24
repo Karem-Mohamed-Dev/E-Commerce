@@ -1,8 +1,9 @@
 const router = require('express').Router();
 const isSeller = require('../utils/isSeller.js');
 const isAuth = require('../utils/isAuth.js');
+const { upload } = require("../utils/upload.js");
 
-const { login, register, verifyAccount, changePassword, updateSeller, deleteSeller, getSellerProducts, getSeller } = require('../controllers/Seller.controller.js');
+const { login, register, changePassword, updateSeller, deleteSeller, getSellerProducts, getSeller } = require('../controllers/Seller.controller.js');
 
 // Login
 router.post('/login', login);
@@ -14,7 +15,7 @@ router.post('/register', register);
 router.post('/change-pass', isAuth, isSeller, changePassword);
 
 // Update Seller
-router.put('/', isAuth, isSeller, updateSeller);
+router.put('/', isAuth, isSeller, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'background', maxCount: 1 }]), updateSeller);
 
 // Delete Seller
 router.delete('/', isAuth, deleteSeller);

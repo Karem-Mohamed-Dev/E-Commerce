@@ -9,6 +9,7 @@ const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
 const { isEmail, isStrongPassword, isMongoId } = require("validator");
 const errorModel = require("../utils/errorModel");
+const { cloudinary } = require("../utils/upload")
 
 // Login
 exports.login = async (req, res, next) => {
@@ -96,20 +97,24 @@ exports.updateUser = async (req, res, next) => {
     const { name, email, phone, country, city, postCode } = req.body;
     const file = req.file;
     if (!file && Object.keys(req.body).length === 0) return next(errorModel(400, "Provide At Least One Field"));
-
+    console.log(req.body);
     try {
         if (file) {
-            // ...
+            if (user.image.publicId)
+                await cloudinary.uploader.destroy(user.image.publicId)
+            const result = await cloudinary.uploader.upload(file.path, { folder: 'user_image' })
+            user.image.url = result.secure_url;
+            user.image.publicId = result.public_id;
         }
         if (name) user.name = name;
         if (email) user.email = email;
         if (phone) user.phone = phone;
-        if (country) user.country = country;
-        if (city) user.city = city;
-        if (postCode) user.postCode = postCode;
+        if (country) user.address.country = country;
+        if (city) user.address.city = city;
+        if (postCode) user.address.postCode = postCode;
         await user.save();
 
-        res.status(200).json({ msg: "User Info Upated" });
+        res.status(200).json({ msg: "User Info Updated" });
     } catch (error) { next(error) }
 }
 
@@ -118,21 +123,18 @@ exports.deleteUser = async (req, res, next) => {
     const { _id, favorites, image } = req.user;
 
     try {
-        // delete user Image ...
-
         const userReviews = await Review.find({ user: _id });
         for (let rev of userReviews) {
             await Product.updateOne({ _id: rev.productId }, { $inc: { reviews: -1 } });
             await rev.deleteOne();
         }
-
-        for (let fav of favorites) {
-            await Product.updateOne({ _id: fav }, { $inc: { favorited: -1 } });
-        }
-
+        
+        for (let fav of favorites) await Product.updateOne({ _id: fav }, { $inc: { favorited: -1 } });
+        if (image.publicId) await cloudinary.uploader.destroy(image.publicId)
         await Report.deleteMany({ user: _id });
         await User.deleteOne({ _id });
-        res.status(200).json({msg: "User deleted successfully"});
+        
+        res.status(200).json({ msg: "User deleted successfully" });
     } catch (error) { next(error) }
 }
 

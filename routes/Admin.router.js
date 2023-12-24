@@ -1,8 +1,9 @@
 const router = require('express').Router();
 const isAdmin = require("../utils/isAdmin.js");
 const isAuth = require("../utils/isAuth.js");
+const { upload } = require("../utils/upload.js");
 
-const { adminLogin, addAdmin, deleteAdmin, sellerSearch, ban, banned, unBan, warned, warn, unWarn, reports } = require("../controllers/Admin.controller.js");
+const { adminLogin, addAdmin, editAdmin, deleteAdmin, sellerSearch, ban, banned, unBan, warned, warn, unWarn, reports } = require("../controllers/Admin.controller.js");
 
 
 // Login Admin
@@ -45,6 +46,9 @@ router.get("/reports", reports);
 
 // Add Admin
 router.post("/", addAdmin);
+
+// Edit Admin
+router.put("/edit", upload.single("image"), editAdmin);
 
 // Remove Admin
 router.delete("/:adminId", deleteAdmin);

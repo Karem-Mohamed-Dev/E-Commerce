@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const isAuth = require('../utils/isAuth');
 const isUser = require('../utils/isUser');
+const { upload } = require('../utils/upload.js');
 
 const { login, register, changePassword, updateUser, deleteUser, getUser, getFavorites, removeFavorite, addFavorite } = require('../controllers/User.controller.js');
 
@@ -14,7 +15,7 @@ router.post('/register', register);
 router.post('/change-pass', isAuth, isUser, changePassword);
 
 // Update User
-router.put('/', isAuth, isUser, updateUser);
+router.put('/', isAuth, isUser, upload.single('image'), updateUser);
 
 // Get Favorites
 router.get('/favorites', isAuth, isUser, getFavorites);

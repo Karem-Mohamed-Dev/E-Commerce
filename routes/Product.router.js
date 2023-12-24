@@ -2,6 +2,7 @@ const router = require('express').Router();
 const isAuth = require("../utils/isAuth.js");
 const isSeller = require("../utils/isSeller.js");
 const isUser = require("../utils/isUser.js");
+const { upload } = require("../utils/upload")
 
 const { search, createProduct, getProduct, editProduct, deleteProduct, reviewProduct, unReviewProduct, productReviews, reportProduct } = require('../controllers/Product.controller.js');
 
@@ -24,12 +25,12 @@ router.get('/:productId/reviews', productReviews);
 router.post('/:productId/report', isAuth, isUser, reportProduct);
 
 // Edit Product
-router.put('/:productId', isAuth, isSeller, editProduct);
+router.put('/:productId', isAuth, isSeller, upload.array('image', 10), editProduct);
 
 // Get Product
 router.get('/:productId', getProduct);
 
 // Create Product
-router.post('/', isAuth, isSeller, createProduct);
+router.post('/', isAuth, isSeller, upload.array('image', 10), createProduct);
 
 module.exports = router;

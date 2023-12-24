@@ -7,6 +7,7 @@ const generateToken = require("../utils/generateToken");
 const { isEmail, isStrongPassword, isMongoId } = require("validator");
 const errorModel = require("../utils/errorModel");
 const sendEmail = require("../utils/sendEmail");
+const { cloudinary } = require("../utils/upload");
 
 //Admin Login
 exports.adminLogin = async (req, res, next) => {
@@ -47,6 +48,26 @@ exports.addAdmin = async (req, res, next) => {
         const { password: pass, updatedAt, __v, resetPass, ...other } = admin._doc;
         const token = generateToken(admin._id, 'admin');
         res.status(201).json({ token, ...other });
+    } catch (error) { next(error) }
+}
+
+// Edit Admin
+exports.editAdmin = async (req, res, next) => {
+    const admin = req.admin;
+    const file = req.file ? req.file.path : null;
+    const { name } = req.body;
+    if (!name && !file) return next(errorModel(400, "Provide at least one field"));
+
+    try {
+        if (file) {
+            if (admin.image.publicId) await cloudinary.uploader.destroy(admin.image.publicId);
+            const { secure_url, public_id } = await cloudinary.uploader.upload(file, { folder: 'admin_images' });
+            admin.image = { url: secure_url, publicId: public_id }
+        }
+        if (name) admin.name = name;
+        await admin.save();
+
+        res.status(200).json({ msg: "Admin Info Updated" });
     } catch (error) { next(error) }
 }
 

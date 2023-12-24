@@ -10,6 +10,7 @@ const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
 const { isEmail, isStrongPassword, isMongoId } = require("validator");
 const errorModel = require("../utils/errorModel");
+const { cloudinary } = require("../utils/upload");
 
 // Login
 exports.login = async (req, res, next) => {
@@ -27,7 +28,7 @@ exports.login = async (req, res, next) => {
         if (!validPass) return next(errorModel(400, 'Email or password is invalid'));
         const token = generateToken(seller._id, 'seller');
 
-        if (seller.ban) return next(errorModel(401, 'You are banned')); 
+        if (seller.ban) return next(errorModel(401, 'You are banned'));
         if (!seller.activated) {
             const verifyToken = jwt.sign({ email, role: "seller" }, process.env.SECRET, { expiresIn: '1h' });
             sendEmail(email, "Verify Your Email", `
@@ -100,17 +101,13 @@ exports.updateSeller = async (req, res, next) => {
 
     if (!files && Object.keys(req.body).length === 0) return next(errorModel(400, "Provide atleast one Field"));
 
-    if (files) {
-        //... 
-    }
-
     if (name) {
         if (name.length < 2 || name.length > 20) return next(errorModel(400, "name can't be less than 2 or bigger than 20 characters"));
         seller.name = name;
     }
     if (email) {
         if (!isEmail(email)) return next(errorModel(400, "Please enter a valid email"));
-        seller.email = email
+        seller.email = email;
     }
     if (phone) seller.phone = phone;
     if (bio) seller.bio = bio;
@@ -119,6 +116,22 @@ exports.updateSeller = async (req, res, next) => {
     if (postCode) seller.postCode = postCode;
 
     try {
+        if (files) {
+            const image = req.files.image[0].path;
+            const background = req.files.background[0].path;
+            if (image) {
+                if (seller.image.publicId) await cloudinary.uploader.destroy(seller.image.publicId);
+                const result = await cloudinary.uploader.upload(image, { folder: 'seller_image' });
+                seller.image.url = result.secure_url;
+                seller.image.publicId = result.public_id;
+            }
+            if (background) {
+                if (seller.backgroundImage.publicId) await cloudinary.uploader.destroy(seller.backgroundImage.publicId);
+                const result = await cloudinary.uploader.upload(background, { folder: 'seller_background' });
+                seller.backgroundImage.url = result.secure_url;
+                seller.backgroundImage.publicId = result.public_id;
+            }
+        }
         const curSeller = await seller.save();
         const { password: pass, resetPass, ...other } = curSeller._doc;
         res.status(200).json(other);
@@ -128,20 +141,29 @@ exports.updateSeller = async (req, res, next) => {
 // Delete Seller
 exports.deleteSeller = async (req, res, next) => {
     const { _id, role } = req.tokenData;
-    if(role !== "seller") return next(errorModel(401, "Not Authorized"));
+    if (role !== "seller") return next(errorModel(401, "Not Authorized"));
 
     try {
         const seller = await Seller.findById(_id);
-        
         if (!seller) return next(errorModel(404, "seller Not Found"));
         if (!seller.activated) return next(errorModel(400, 'You need to verify your email first'));
         if (seller.ban) return next(errorModel(401, 'You are banned'));
+
+        if (seller.image.publicId) await cloudinary.uploader.destroy(seller.image.publicId)
+        if (seller.backgroundImage.publicId) await cloudinary.uploader.destroy(seller.backgroundImage.publicId)
 
         if (seller.products.length > 0) {
             for (let productId of seller.products) await Cart.updateMany({ $in: { products: productId } }, { $pull: { products: productId } });
             await Report.deleteMany({ productId: seller.products });
             await Review.deleteMany({ productId: seller.products });
-            await Product.deleteMany({ _id: seller.products });
+
+            const products = await Product.find({ _id: seller.products })
+            for (let product of products) {
+                for (let media of product.media) {
+                    if (media.publicId) await cloudinary.uploader.destroy(media.publicId)
+                }
+                await product.deleteOne();
+            }
         }
         await seller.deleteOne();
         res.status(200).json({ msg: 'Seller deleted successfully' });
@@ -151,7 +173,7 @@ exports.deleteSeller = async (req, res, next) => {
 // Get Seller Products
 exports.getSellerProducts = async (req, res, next) => {
     const { sellerId } = req.params;
-    if(!isMongoId(sellerId)) return next(errorModel(400, "Invalid Seller Id"))
+    if (!isMongoId(sellerId)) return next(errorModel(400, "Invalid Seller Id"))
     const page = +req.query.page || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
