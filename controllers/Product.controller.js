@@ -1,4 +1,5 @@
 const Product = require("../models/Product");
+const Cart = require("../models/Cart");
 const Category = require("../models/Category");
 const SubCategory = require("../models/SubCategory");
 const Brand = require("../models/Brand");
@@ -179,6 +180,14 @@ exports.deleteProduct = async (req, res, next) => {
         await Category.updateOne({ name: product.category }, { $inc: { products: -1 } })
         if (product.subCategory) await SubCategory.updateOne({ name: product.subCategory }, { $inc: { products: -1 } })
         if (product.brand) await Brand.updateOne({ name: product.brand }, { $inc: { products: -1 } })
+
+
+        const cartsToUpdate = await Cart.find({ 'products.product': product._id });
+        for (const cart of cartsToUpdate) {
+            cart.products = cart.products.filter(ele => ele.product.toString() !== product._id);
+            await cart.save();
+        }
+
 
         for (let image of product.media) await cloudinary.uploader.destroy(image.publicId);
         seller.products.pull(product._id);
