@@ -145,7 +145,7 @@ exports.deleteSeller = async (req, res, next) => {
     try {
         if (seller.image.publicId) await cloudinary.uploader.destroy(seller.image.publicId)
         if (seller.backgroundImage.publicId) await cloudinary.uploader.destroy(seller.backgroundImage.publicId)
-        
+
         if (seller.products.length > 0) {
             const cartsToUpdate = await Cart.find({ 'products.product': { $in: seller.products } });
             for (const cart of cartsToUpdate) {
@@ -180,7 +180,14 @@ exports.getSellerProducts = async (req, res, next) => {
             .slice('products', [skip, limit]).populate('products', ["title", "media", "price", "rating"]);
         if (!seller) return next(errorModel(404, "Seller not found"));
 
-        res.status(200).json(seller.products);
+        res.status(200).json({
+            result: seller.products.length,
+            paginationData: {
+                currentPage: page,
+                totalPages: Math.ceil(seller.products.length / limit)
+            },
+            products: seller.products
+        });
     } catch (error) { next(error) }
 }
 

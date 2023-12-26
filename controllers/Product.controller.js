@@ -208,7 +208,7 @@ exports.productReviews = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     try {
-        const reviewsCount = await Product.countDocuments({ productId });
+        const reviewsCount = await Product.countDocuments({ _id: productId });
         const product = await Product.findById(productId);
         if (!product) return next(errorModel(400, "Product not found"));
 

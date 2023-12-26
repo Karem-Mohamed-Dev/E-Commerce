@@ -128,12 +128,12 @@ exports.deleteUser = async (req, res, next) => {
             await Product.updateOne({ _id: rev.productId }, { $inc: { reviews: -1 } });
             await rev.deleteOne();
         }
-        
+
         for (let fav of favorites) await Product.updateOne({ _id: fav }, { $inc: { favorited: -1 } });
         if (image.publicId) await cloudinary.uploader.destroy(image.publicId)
         await Report.deleteMany({ user: _id });
         await User.deleteOne({ _id });
-        
+
         res.status(200).json({ msg: "User deleted successfully" });
     } catch (error) { next(error) }
 }
@@ -153,10 +153,20 @@ exports.getUser = async (req, res, next) => {
 // Get Favorites
 exports.getFavorites = async (req, res, next) => {
     const user = req.user;
+    const page = +req.query.page || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
 
     try {
-        const favorites = await Product.find({ _id: user.favorites }, ['title', 'description', 'price', 'media', 'discount', 'rating'])
-        res.status(200).json({ result: favorites.length, favorites });
+        const favorites = await Product.find({ _id: user.favorites }, ['title', 'description', 'price', 'media', 'discount', 'rating']).skip(skip).limit(limit);
+        res.status(200).json({
+            result: favorites.length,
+            pagenationData: {
+                currentPage: page,
+                totalPages: Math.ceil(favorites.length / limit)
+            },
+            favorites
+        });
     } catch (error) { next(error) }
 }
 
