@@ -18,7 +18,7 @@ router.post('/change-pass', isAuth, isSeller, changePassword);
 router.put('/', isAuth, isSeller, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'background', maxCount: 1 }]), updateSeller);
 
 // Delete Seller
-router.delete('/', isAuth, deleteSeller);
+router.delete('/', isAuth, isSeller, deleteSeller);
 
 // Get Products
 router.get('/:sellerId/products', getSellerProducts);

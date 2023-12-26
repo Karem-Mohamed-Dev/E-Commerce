@@ -116,16 +116,16 @@ exports.updateSeller = async (req, res, next) => {
     if (postCode) seller.postCode = postCode;
 
     try {
-        if (files) {
-            const image = req.files.image[0].path;
-            const background = req.files.background[0].path;
+        if (files.length > 0) {
             if (image) {
+                const image = req.files.image[0].path;
                 if (seller.image.publicId) await cloudinary.uploader.destroy(seller.image.publicId);
                 const result = await cloudinary.uploader.upload(image, { folder: 'seller_image' });
                 seller.image.url = result.secure_url;
                 seller.image.publicId = result.public_id;
             }
             if (background) {
+                const background = req.files.background[0].path;
                 if (seller.backgroundImage.publicId) await cloudinary.uploader.destroy(seller.backgroundImage.publicId);
                 const result = await cloudinary.uploader.upload(background, { folder: 'seller_background' });
                 seller.backgroundImage.url = result.secure_url;
@@ -140,28 +140,25 @@ exports.updateSeller = async (req, res, next) => {
 
 // Delete Seller
 exports.deleteSeller = async (req, res, next) => {
-    const { _id, role } = req.tokenData;
-    if (role !== "seller") return next(errorModel(401, "Not Authorized"));
+    const seller = req.tokenData;
 
     try {
-        const seller = await Seller.findById(_id);
-        if (!seller) return next(errorModel(404, "seller Not Found"));
-        if (!seller.activated) return next(errorModel(400, 'You need to verify your email first'));
-        if (seller.ban) return next(errorModel(401, 'You are banned'));
-
         if (seller.image.publicId) await cloudinary.uploader.destroy(seller.image.publicId)
         if (seller.backgroundImage.publicId) await cloudinary.uploader.destroy(seller.backgroundImage.publicId)
-
+        
         if (seller.products.length > 0) {
-            for (let productId of seller.products) await Cart.updateMany({ $in: { products: productId } }, { $pull: { products: productId } });
+            const cartsToUpdate = await Cart.find({ 'products.product': { $in: seller.products } });
+            for (const cart of cartsToUpdate) {
+                for (const productId of seller.products) cart.products = cart.products.filter(ele => ele.product.toString() !== productId);
+                await cart.save();
+            }
+
             await Report.deleteMany({ productId: seller.products });
             await Review.deleteMany({ productId: seller.products });
 
             const products = await Product.find({ _id: seller.products })
-            for (let product of products) {
-                for (let media of product.media) {
-                    if (media.publicId) await cloudinary.uploader.destroy(media.publicId)
-                }
+            for (const product of products) {
+                for (const media of product.media) await cloudinary.uploader.destroy(media.publicId)
                 await product.deleteOne();
             }
         }
