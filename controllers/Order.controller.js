@@ -43,7 +43,6 @@ exports.placeOrder = async (req, res, next) => {
             couponExist.numOfUses += 1;
             await couponExist.save();
         }
-        // console.log(+totalPrice)
 
         const orderData = {
             user: user._id,

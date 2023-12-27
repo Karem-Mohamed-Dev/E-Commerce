@@ -1,7 +1,7 @@
 ## Description
 This API provides endpoints for accessing E-Commerce functionalities, including roles, products, search, payments and more.
 
-
+- For More Details About End Points: https://documenter.getpostman.com/view/27899740/2s9YkuXxNe#e46747c4-d61f-4b6e-a70c-4653ce99fb84
 
 ### Prerequisites
     - "bcrypt": "^5.1.1",
