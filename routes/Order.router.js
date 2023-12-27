@@ -17,6 +17,6 @@ router.put('/:orderId', isAdmin, updateOrderStatus);
 router.get('/:orderId/details', isUser, orderDetails);
 
 // Get Orders
-router.get('/:userId', isUser, getOrders);
+router.get('/', isUser, getOrders);
 
 module.exports = router;
