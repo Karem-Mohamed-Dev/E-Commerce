@@ -12,7 +12,7 @@ const OrderSchema = new Schema({
         city: { type: String, required: [true, "City Is Required"] },
         postCode: { type: Number, required: [true, "Post Code Is Required"] },
     },
-    coupon: { type: Schema.Types.ObjectId, default: null },
+    coupon: { code: { type: String, default: null }, discount: { type: Number, default: null } },
     payment: {
         type: String,
         enum: ["cash", "card"],

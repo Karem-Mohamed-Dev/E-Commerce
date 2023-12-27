@@ -1,22 +1,48 @@
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
+
 const Order = require("../models/Order");
 const Cart = require("../models/Cart");
+const Product = require("../models/Product");
 const Coupon = require("../models/Coupon");
-const errorModel = require("../utils/errorModel");
+const Seller = require("../models/Seller");
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET);
+const errorModel = require("../utils/errorModel");
 const { isMongoId } = require("validator");
 
 // Place Order
 exports.placeOrder = async (req, res, next) => {
     const user = req.user;
-    const { stripeToken, phone, country, city, postCode, coupon, payment } = req.body;
+    let { stripeToken, phone, country, city, postCode, coupon, payment } = req.body;
     if (!phone || !country || !city || !postCode || !payment) return next(errorModel(400, "Phone, Country, City and Payment Method are Required"));
-
     if (payment) if (payment !== 'card' && payment !== 'cash') return next(errorModel(400, "Payment must be card or cash"));
 
     try {
-        const cart = await Cart.findOne({ user: user._id }).populate('products.product', 'price')
+        let validStock = true;
+        const cart = await Cart.findOne({ user: user._id }).populate('products.product');
         if (!cart) return next(errorModel(404, "Cart not found"));
+
+        cart.products.forEach(ele => {
+            if (ele.product.stock < ele.quantity) {
+                validStock = false;
+                return next(errorModel(400, `Not Enough Stock For ${ele.product.title}`));
+            }
+        })
+        if (!validStock) return;
+
+        let totalPrice = 0;
+        cart.products.forEach(ele => totalPrice += ((ele.product.price - ele.product.discount) * ele.quantity).toFixed(2));
+        if (coupon) {
+            const couponExist = await Coupon.findOne({ code: coupon });
+            if (!couponExist) return next(errorModel(404, "Coupon not found"));
+            if (couponExist.numOfUses >= couponExist.maxUses || couponExist.expiresAt < Date.now()) {
+                await couponExist.deleteOne();
+                return next(errorModel(400, "Coupon has been expired"));
+            }
+            coupon = { code: couponExist.code, discount: couponExist.discount };
+            totalPrice -= ((totalPrice / 100) * couponExist.discount).toFixed(2);
+            couponExist.numOfUses += 1;
+            await couponExist.save();
+        }
 
         const orderData = {
             user: user._id,
@@ -27,27 +53,11 @@ exports.placeOrder = async (req, res, next) => {
                 city: city,
                 postCode: postCode
             },
-            coupon: null,
+            coupon: coupon || null,
             payment: payment,
             status: "Pending",
             total: totalPrice
         }
-
-        let totalPrice = 0;
-        cart.products.forEach(ele => totalPrice += ele.product.price * ele.quantity)
-        if (coupon) {
-            const couponExist = await Coupon.findOne({ code: coupon })
-            if (!couponExist) return next(errorModel(404, "Coupon not found"));
-            if (couponExist.numOfUses >= couponExist.maxUses || couponExist.expiresAt < Date.now()) {
-                await couponExist.deleteOne();
-                return next(errorModel(400, "Coupon has been expired"));
-            }
-            orderData.coupon = coupon;
-            totalPrice -= (totalPrice / 100) * couponExist.discount
-            couponExist.numOfUses += 1;
-            await couponExist.save();
-        }
-
 
         if (payment === "card") {
             if (!stripeToken) return next(errorModel(400, "Stripe Token Is Required"));
@@ -56,15 +66,25 @@ exports.placeOrder = async (req, res, next) => {
                 currency: "usd",
                 source: stripeToken,
                 description: "Order"
-            }, async (err, result) => {
-                if (err) return next(errorModel(500, "Something went wrong"));
-                await Order.create(orderData)
-                return res.status(200).json(orderData);
+            }, (err, result) => {
+                if (err) return next(err);
             })
-        } else if (payment === "cash") {
-            await Order.create(orderData)
-            return res.status(200).json(orderData);
         }
+
+        await Order.create(orderData);
+        cart.products.forEach(async (ele) => {
+            const total = ele.product.price * ele.quantity;
+            const product = await Product.findById(ele.product._id);
+            const seller = await Seller.findById(product.seller);
+            product.sold += ele.quantity;
+            product.stock -= ele.quantity;
+            seller.balance += +((total - (total / 100 * 2)) - (ele.product.discount * ele.quantity)).toFixed(2);
+            await product.save();
+            await seller.save();
+        });
+
+        await cart.deleteOne();
+        return res.status(200).json(orderData);
     } catch (error) { next(error) }
 }
 
