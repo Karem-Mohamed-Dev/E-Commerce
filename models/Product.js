@@ -14,7 +14,7 @@ const ProductSchema = new Schema({
     sold: { type: Number, default: 0, min: 0 },
     rating: { type: Number, default: 0, min: 0, max: 5 },
     seller: { type: Schema.Types.ObjectId, ref: 'Seller', required: [true, "Seller Id Is Required"] },
-    reviews: { type: Number, default: 0 }
+    reviews: { type: Number, default: 0, min: 0 }
 }, { timestamps: true })
 
 module.exports = model('Product', ProductSchema);
