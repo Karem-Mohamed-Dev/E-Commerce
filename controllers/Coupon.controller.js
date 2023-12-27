@@ -1,4 +1,4 @@
-const Coupone = require('../models/Coupon');
+const Coupon = require('../models/Coupon');
 const { isMongoId } = require("validator");
 const errorModel = require('../utils/errorModel');
 
@@ -9,8 +9,8 @@ exports.getCoupons = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     try {
-        const couponsCount = await Coupone.countDocuments({});
-        const coupones = await Coupone.find({})
+        const couponsCount = await Coupon.countDocuments({});
+        const coupones = await Coupon.find({})
             .skip(skip).limit(limit).populate('creator', 'name');
 
         res.status(200).json({
@@ -30,15 +30,14 @@ exports.getCoupon = async (req, res, next) => {
     if (!code) return next(errorModel(400, "Please Provide a code"));
 
     try {
-        const coupone = await Coupone.findOne({ code });
-        if (!coupone) return next(errorModel(400, "No Coupon found"));
+        const coupon = await Coupon.findOne({ code });
+        if (!coupon) return next(errorModel(400, "No Coupon found"));
 
-        if (coupone.expiresAt < Date.now()) return next(errorModel(400, "Coupon Is Expired"));
-        if (coupone.numOfUses >= coupone.maxUses) {
-            await coupone.deleteOne();
-            return next(errorModel(400, "Coupon Reatched maximum usage"));
+        if (coupon.expiresAt < Date.now() || coupon.numOfUses >= coupon.maxUses) {
+            await coupon.deleteOne();
+            return next(errorModel(400, "Coupon Is Expired"));
         }
-        res.status(200).json({ discount: coupone.discount });
+        res.status(200).json({ discount: coupon.discount });
     } catch (error) { next(error) }
 }
 
@@ -49,9 +48,9 @@ exports.createCoupon = async (req, res, next) => {
     if (!code || !discount || !expiresAt || !maxUses) return next(errorModel(400, "Coupon code and discount and expires date and max uses are required"));
 
     try {
-        const coupone = await Coupone.create({ creator: _id, code, discount, expiresAt, maxUses });
+        const coupon = await Coupon.create({ creator: _id, code, discount, expiresAt, maxUses });
 
-        res.status(201).json({ ...coupone._doc, creator: name })
+        res.status(201).json({ ...coupon._doc, creator: name })
     } catch (error) { next(error) }
 }
 
@@ -63,7 +62,7 @@ exports.editCoupon = async (req, res, next) => {
     if (!code && !discount && !expiresAt && !maxUses) return next(errorModel(400, "Please Provide atleast one field"));
 
     try {
-        const coupon = await Coupone.findById(couponId).populate('creator', 'name');
+        const coupon = await Coupon.findById(couponId).populate('creator', 'name');
 
         if (code) coupon.code = code;
         if (discount) coupon.discount = discount;
@@ -81,7 +80,7 @@ exports.deleteCoupon = async (req, res, next) => {
     if (!isMongoId(couponId)) return next(errorModel(400, "Please provide a valid coupon id"));
 
     try {
-        const coupon = await Coupone.findById(couponId).populate('creator', 'name');
+        const coupon = await Coupon.findById(couponId).populate('creator', 'name');
         if(!coupon) return next(errorModel(404, "Coupon not found"));
         await coupon.deleteOne();
         res.status(200).json({ msg: "Coupon deleted successfully" })

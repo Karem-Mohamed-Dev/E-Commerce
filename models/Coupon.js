@@ -6,7 +6,7 @@ const CouponSchema = new Schema({
     code: { type: String, required: [true, "Code Is Required"], unique: true },
     expiresAt: { type: Date, required: [true, "Expire Date Is Required"] },
     maxUses: { type: Number, required: [true, "Max Uses Is Required"], min: 1 },
-    numOfUses: { type: Number, default: 0 },
+    numOfUses: { type: Number, default: 0, min: 0 },
 }, { timestamps: true })
 
 module.exports = model('Coupon', CouponSchema);
