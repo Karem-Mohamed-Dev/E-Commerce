@@ -18,7 +18,7 @@ exports.placeOrder = async (req, res, next) => {
 
     try {
         let validStock = true;
-        const cart = await Cart.findOne({ user: user._id }).populate('products.product');
+        const cart = await Cart.findOne({ user: user._id }).populate('products.product', ["-__v", "-updatedAt", "-reviews", "-rating", "-sold", "-favorited"]);
         if (!cart) return next(errorModel(404, "Cart not found"));
 
         cart.products.forEach(ele => {
@@ -43,6 +43,7 @@ exports.placeOrder = async (req, res, next) => {
             couponExist.numOfUses += 1;
             await couponExist.save();
         }
+        // console.log(+totalPrice)
 
         const orderData = {
             user: user._id,
@@ -56,7 +57,7 @@ exports.placeOrder = async (req, res, next) => {
             coupon: coupon || null,
             payment: payment,
             status: "Pending",
-            total: totalPrice
+            total: +totalPrice
         }
 
         if (payment === "card") {

@@ -3,7 +3,7 @@ const { Schema, model } = require("mongoose");
 const OrderSchema = new Schema({
     user: { type: Schema.Types.ObjectId, ref: 'User', required: [true, "User Id Is Required"] },
     products: [{
-        product: { type: Schema.Types.ObjectId, ref: "Product" },
+        product: Object,
         quantity: { type: Number, min: 1 }
     }],
     phone: { type: Number, required: [true, "Phone Number Is Required"] },
